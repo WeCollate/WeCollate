@@ -886,6 +886,7 @@ const HELP_CONTENT = {
   'policies.edit': { what: 'Author and edit the policy: its title, version, live point of contact, and the content of each section.', why: 'A policy library is only useful if the content lives here and can be kept current, not just a list of section headings.', best: 'Write each section, reorder or add sections as needed, set a live point of contact, then Save. Saving is session-only in the prototype and the full governance and approval path still applies before a policy is issued.' },
   'revalidate.groupList': { what: 'A shared task list for your whole trust team, not just you.', why: 'Revalidation findings often need whoever is free, not the one person who ran the check; a shared list means nothing waits on an individual.', best: 'Forward a finding here when anyone on the team could action it; add it to your own to-do when it is specifically yours. Session only in the prototype.' },
   'messages.dashboard': { what: 'A glance at everything waiting in your inbox, with Community folded in.', why: 'Community requests, exchanges and to-dos are really just messages, so they belong in one place rather than a separate menu.', best: 'Click a tile to filter the list (new, awaiting your action, follow-ups due) or to open a Community area (exchange requests, policy requests, to-dos).' },
+  'policies.lens': { what: 'Whose policies you are looking at: My trust (yours to maintain) or Shared by the network (other organisations\' policies, published for exchange).', why: 'The platform exists partly so policies can be shared and exchanged between trusts, and four network-shared policies were in the data all along, but the library never listed them: they were reachable only through a search box buried inside the new-policy flow. A capability nobody can find is not a capability.', best: 'Adopt copies the SECTION STRUCTURE, never the other trust\'s clinical text. Your trust then owns it: it has no point of contact until you name one, and it goes through your own approval path. Nothing about the originating trust\'s document changes.', source: 'James, 16/07/2026: same treatment as the protocol library. Two lenses only, because policies have two kinds; there is no drafts lens because a policy created here goes straight into the trust library, and inventing a lens for a state that does not exist would breach section 7.' },
   'find.lens': { what: 'Whose library you are looking at: the WeCollate library (the published corpus and alliance baselines), My trust (what your trust has saved a private copy of), My drafts (yours, in progress), or Archived.', why: 'The library mixed everything together, so a document tagged "Published corpus" sat next to your own drafts with nothing saying whose it was, while offering you "Save a copy to your trust". Ownership drives what you may do: you cannot edit a shared baseline in place, and nobody outside your trust sees your saved copy or your draft. Showing the lens answers that permanently instead of asking you each time you arrive.', best: 'It also answers "where did it go". "Save a copy to your trust" lands in My trust (privacyScope: trust_private, the shared baseline untouched). "Author a new version" lands in My drafts, with no passport, invisible to pharma and insurer profiles until it is approved.', source: 'James, 16/07/2026: a page splitter asking whether the user wants their own file library or the WeCollate library. Built as a lens rather than a question: a splitter that asks costs a click every time and gets clicked through blindly. Clinician-only: pharma and insurer receive one projection of the approved set and have no trust library or drafts of their own.' },
   'insurer.adoption': { what: 'How many hospitals use this exact version, how long the medicine has been established, where it sits against a biosimilar, and a confidence band with the arithmetic shown.', why: 'These are facts about a MEDICINE, not observations of clinicians: how many trusts independently reached the same conclusion is the strongest assurance signal there is, and it costs nobody their privacy. Confidence is arithmetic on three things you can see on the same card (verified, in date, adopted), never a score from a model: you can check it yourself and disagree with it.', best: 'Read the arithmetic, not just the band. A "Low" band on a rare-indication protocol usually means too few trusts to report rather than anything wrong. Counts below five trusts are withheld under small-cell suppression, so a rare regimen shows "withheld" rather than a number that could identify the trust.', source: 'James, 16/07/2026: how many hospitals are using this, biosimilar position, when it launched. NOTE: there is deliberately NO regional or postcode breakdown. Regional usage plus insurer pricing is postcode-rated cover, which would breach section 3 and invert the platform: it is escalated as an A5 commercial-model and IG question, not built.' },
   'insurer.position': { what: 'Your organisation\'s funding position on this regimen: accept, do not fund, or ask the trust. A reason is required on every position, including accept.', why: 'The platform recorded what you looked at but never what you concluded, so the evidence could show diligence but not a decision. A decision without a stated reason is a click, not evidence. The position is stamped with the version and passport it was taken against, so when the trust revalidates, the old position shows as superseded instead of silently carrying onto a document that has changed.', best: 'This is a FUNDING position, not a clinical judgement, and it is not sent to the trust. "Do not fund" means "we will not fund this on the current evidence", never "this protocol is wrong": the clinical decision remains the trust\'s. If you need more before you can decide, use "Ask the trust" and raise a governed clarification.', source: 'James, 16/07/2026: "actionable accept/reject/ask?" Project Instructions v0.03 section 18 (reconstructable decisions) and section 4 (the AI and the platform are not the clinical decision-maker).' },
@@ -7591,6 +7592,40 @@ function renderPolicyNew(){
     <p class="text-caption text-muted">Clones need a live point of contact after creation: open the draft and assign one. Session only; nothing is stored or approved.</p>
   </div>`;
 }
+/* ---------- Policy library lenses (16/07/2026) ----------
+   Same question as the protocol library ("whose document is this?"), different
+   underlying shape, so this is NOT a copy of the protocol lens. Policies already
+   hold two separate arrays: POLICIES (this trust's, each with a live named point
+   of contact) and NETWORK_POLICIES (other organisations', structure only, no POC
+   of yours).
+
+   The real defect this closes: NETWORK_POLICIES was reachable ONLY through a
+   search box buried inside the new-policy flow. Four shared policies existed and
+   the library never listed them, so "policies can be shared and exchanged between
+   trusts" (Purpose, section 1) was true in the data and invisible in the product.
+
+   Two lenses only, because there are only two kinds here. There is no "drafts"
+   lens: a policy created in this prototype goes straight into POLICIES rather
+   than a draft state, and inventing a lens for a state that does not exist would
+   be exactly the dishonest maturity section 7 forbids. */
+const POL_LENSES = [
+  ['trust', 'My trust', 'Policies your trust holds and maintains. Each carries a live named point of contact resolved from the directory, never typed into the document body: if that person leaves, the policy is flagged rather than quietly orphaned.'],
+  ['network', 'Shared by the network', 'Policies other organisations have published for exchange. Structure only: you see what it covers, not their clinical text. Adopt one to start your own copy, and your trust then owns it, names its contact, and takes it through your own approval.']
+];
+function polLens(){ return state.polLens || 'trust'; }
+function renderPolLenses(mine, net){
+  if (state.role !== 'clinician') return '';
+  const cur = POL_LENSES.find(l => l[0] === polLens()) || POL_LENSES[0];
+  const n = { trust: POLICIES.length, network: NETWORK_POLICIES.length };
+  return `
+  <div class="card" style="background:var(--surface-1)">
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">
+      <span class="text-caption text-muted">Whose policies? ${helpBtn('policies.lens')}</span>
+      ${POL_LENSES.map(([id, label]) => `<button type="button" class="smpc-chip" aria-pressed="${polLens() === id}" data-action="pol-lens" data-view="${id}">${label} (${n[id]})</button>`).join('')}
+    </div>
+    <p class="text-caption text-muted mt-2">${cur[2]}</p>
+  </div>`;
+}
 function renderPolicies(){
   if (state.policyNewOpen && state.role === 'clinician') return renderPolicyNew();
   if (state.policyEdit && state.role === 'clinician') { const s = POLICIES.find(x => x.id === state.policyEdit.id); if (s) return renderPolicyEditor(s); state.policyEdit = null; }
@@ -7598,27 +7633,45 @@ function renderPolicies(){
   if (!sel) {
     const q = (state.polLibQ || '').trim().toLowerCase();
     const searchable = (pol) => { const pocName = (account(pol.assignedPocId) || {}).name || ''; let blob = ''; try { blob = JSON.stringify(pol); } catch (e) { blob = pol.title || ''; } return (blob + ' ' + pocName).toLowerCase(); };
-    const list = q ? POLICIES.filter(p => searchable(p).includes(q)) : POLICIES;
+    const lens = polLens();
+    /* The network lens is the real gap this closes: NETWORK_POLICIES existed but
+       was reachable ONLY through a search box inside the new-policy flow, so four
+       shared policies were invisible unless you were already creating one. */
+    const netSearchable = (pol) => (pol.title + ' ' + pol.owner + ' ' + (pol.sections || []).join(' ')).toLowerCase();
+    const mine = q ? POLICIES.filter(p => searchable(p).includes(q)) : POLICIES;
+    const net = q ? NETWORK_POLICIES.filter(p => netSearchable(p).includes(q)) : NETWORK_POLICIES;
+    const list = lens === 'network' ? net : mine;
     return `
   <div class="view stack">
     <div class="row-between">
       <div class="h1">Policy library ${helpBtn('nav.policies')} ${flagStatusPill('policyLibrary')}</div>
+      ${state.role === 'clinician' ? '<button type="button" class="btn btn-small btn-primary" data-action="policy-new-open">Write a new policy</button>' : ''}
     </div>
     <p class="text-secondary">Alliance and trust guidance that sits alongside the protocol library. These are real published WMCA documents held in this trunk; the prototype lists their structure and does not re-type their clinical content.</p>
+    ${renderPolLenses(mine, net)}
     <div class="field"><label class="field-label">Find a policy ${helpBtn('shell.find')}</label><input type="search" data-bind="polLibQ" value="${(state.polLibQ || '').replace(/"/g,'&quot;')}" placeholder="Search title, owner, or inside the document (for example: extravasation, FFP3, spillage)"></div>
-    <p class="text-caption text-muted">${list.length} of ${POLICIES.length}${q ? ' matching "' + q.replace(/"/g,'&quot;') + '"' : ''}. Search looks inside the document, not just the title.</p>
+    <p class="text-caption text-muted">${list.length} of ${(lens === 'network' ? NETWORK_POLICIES : POLICIES).length}${q ? ' matching "' + q.replace(/"/g,'&quot;') + '"' : ''}. Search looks inside the document, not just the title.</p>
     <div class="card" style="padding:0">
-      ${list.length ? list.map(pol => {
+      ${lens === 'network'
+        ? (list.length ? list.map(pol => `
+        <div class="control-row" style="grid-template-columns: 2fr 1.2fr auto;align-items:center">
+          <div><div style="font-weight:500">${pol.title}</div><div class="text-caption text-muted mt-1">${(pol.sections || []).length} sections</div></div>
+          <div class="text-small text-secondary">${pol.owner}</div>
+          <div class="row" style="gap:6px">
+            <button type="button" class="btn btn-small" data-action="policy-adopt" data-id="${pol.id}">Adopt to my trust</button>
+          </div>
+        </div>`).join('') : '<p class="text-small text-secondary" style="padding:var(--space-4)">No shared policy matches that term.</p>')
+        : (list.length ? list.map(pol => {
         const poc = account(pol.assignedPocId);
         const orphan = poc && poc.activeStatus !== 'Active';
         return `
         <button type="button" class="list-row" style="grid-template-columns: 2fr 0.7fr 0.9fr 1.2fr" data-action="open-policy" data-id="${pol.id}">
-          <div style="font-weight:500">${pol.title}</div>
+          <div style="font-weight:500">${pol.title}${pol.adoptedFrom ? ' <span class="pill pill-neutral">Adopted</span>' : ''}</div>
           <div class="text-small">${pol.version} ${policyCurrencyChip(pol)}</div>
           <div class="text-small text-secondary">${pol.issued}</div>
           <div>${orphan ? '<span class="pill pill-danger">No live point of contact</span>' : `<span class="text-small text-secondary">${poc ? poc.name : ''}</span>`}</div>
         </button>`;
-      }).join('') : '<p class="text-small text-secondary" style="padding:var(--space-4)">No policy matches that term. Try another word from inside the document.</p>'}
+      }).join('') : '<p class="text-small text-secondary" style="padding:var(--space-4)">No policy matches that term. Try another word from inside the document.</p>')}
     </div>
   </div>`;
   }
@@ -11509,6 +11562,23 @@ function initEvents(){
     else if (action === 'policy-clone-network') {
       const src = NETWORK_POLICIES.find(x => x.id === btn.getAttribute('data-id')); if (!src) return;
       policyCreate({ title: src.title.replace(' (network shared)', '') + ' (draft from network)', assignedPocId: null, sections: src.sections.slice(), summary: 'Cloned from the UK network exchange (' + src.owner + '): section structure copied, your trust owns the content and its approval. Assign a live point of contact.', source: 'UK network exchange, illustrative catalogue (prototype, session only)' });
+    }
+    else if (action === 'pol-lens') { state.polLens = btn.getAttribute('data-view'); state.polLibQ = ''; renderAll(); }
+    else if (action === 'policy-adopt') {
+      /* Reuses policyCreate, the same path as policy-clone-network: adopting is
+         cloning the STRUCTURE, never the other trust's clinical text. Governance
+         resets to your trust: no point of contact until you name one, and your own
+         approval path applies. The lens switches to My trust so the destination is
+         seen, not just described. */
+      const src = NETWORK_POLICIES.find(x => x.id === btn.getAttribute('data-id')); if (!src) return;
+      policyCreate({ title: src.title.replace(' (network shared)', ''), assignedPocId: null, sections: src.sections.slice(), adoptedFrom: src.owner, summary: 'Adopted from the UK network exchange (' + src.owner + '): section structure copied, your trust owns the content and its approval. Assign a live point of contact.', source: 'UK network exchange, illustrative catalogue (prototype, session only)' });
+      /* policyCreate opens the editor on the new policy. Adopting is not the same
+         act as editing: the point of adopting is to see it arrive in your library.
+         So close the editor, land the user in My trust, and say where it went. */
+      state.policyEdit = null; state.policyId = null;
+      state.polLens = 'trust';
+      state.draftSavedNotice = 'Adopted "' + src.title.replace(' (network shared)', '') + '" from ' + src.owner + '. It is now in <strong>My trust</strong>: the section structure was copied, not their clinical text, and it has no point of contact until you name one. Your trust owns it and your own approval path applies.';
+      renderAll();
     }
     else if (action === 'policy-edit') { const src = POLICIES.find(x => x.id === btn.getAttribute('data-id')); if (src) { policyEditOpen(src); renderAll(); } }
     else if (action === 'policy-edit-cancel') { state.policyEdit = null; renderAll(); }
