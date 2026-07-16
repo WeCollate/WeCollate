@@ -886,6 +886,7 @@ const HELP_CONTENT = {
   'policies.edit': { what: 'Author and edit the policy: its title, version, live point of contact, and the content of each section.', why: 'A policy library is only useful if the content lives here and can be kept current, not just a list of section headings.', best: 'Write each section, reorder or add sections as needed, set a live point of contact, then Save. Saving is session-only in the prototype and the full governance and approval path still applies before a policy is issued.' },
   'revalidate.groupList': { what: 'A shared task list for your whole trust team, not just you.', why: 'Revalidation findings often need whoever is free, not the one person who ran the check; a shared list means nothing waits on an individual.', best: 'Forward a finding here when anyone on the team could action it; add it to your own to-do when it is specifically yours. Session only in the prototype.' },
   'messages.dashboard': { what: 'A glance at everything waiting in your inbox, with Community folded in.', why: 'Community requests, exchanges and to-dos are really just messages, so they belong in one place rather than a separate menu.', best: 'Click a tile to filter the list (new, awaiting your action, follow-ups due) or to open a Community area (exchange requests, policy requests, to-dos).' },
+  'find.lens': { what: 'Whose library you are looking at: the WeCollate library (the published corpus and alliance baselines), My trust (what your trust has saved a private copy of), My drafts (yours, in progress), or Archived.', why: 'The library mixed everything together, so a document tagged "Published corpus" sat next to your own drafts with nothing saying whose it was, while offering you "Save a copy to your trust". Ownership drives what you may do: you cannot edit a shared baseline in place, and nobody outside your trust sees your saved copy or your draft. Showing the lens answers that permanently instead of asking you each time you arrive.', best: 'It also answers "where did it go". "Save a copy to your trust" lands in My trust (privacyScope: trust_private, the shared baseline untouched). "Author a new version" lands in My drafts, with no passport, invisible to pharma and insurer profiles until it is approved.', source: 'James, 16/07/2026: a page splitter asking whether the user wants their own file library or the WeCollate library. Built as a lens rather than a question: a splitter that asks costs a click every time and gets clicked through blindly. Clinician-only: pharma and insurer receive one projection of the approved set and have no trust library or drafts of their own.' },
   'insurer.adoption': { what: 'How many hospitals use this exact version, how long the medicine has been established, where it sits against a biosimilar, and a confidence band with the arithmetic shown.', why: 'These are facts about a MEDICINE, not observations of clinicians: how many trusts independently reached the same conclusion is the strongest assurance signal there is, and it costs nobody their privacy. Confidence is arithmetic on three things you can see on the same card (verified, in date, adopted), never a score from a model: you can check it yourself and disagree with it.', best: 'Read the arithmetic, not just the band. A "Low" band on a rare-indication protocol usually means too few trusts to report rather than anything wrong. Counts below five trusts are withheld under small-cell suppression, so a rare regimen shows "withheld" rather than a number that could identify the trust.', source: 'James, 16/07/2026: how many hospitals are using this, biosimilar position, when it launched. NOTE: there is deliberately NO regional or postcode breakdown. Regional usage plus insurer pricing is postcode-rated cover, which would breach section 3 and invert the platform: it is escalated as an A5 commercial-model and IG question, not built.' },
   'insurer.position': { what: 'Your organisation\'s funding position on this regimen: accept, do not fund, or ask the trust. A reason is required on every position, including accept.', why: 'The platform recorded what you looked at but never what you concluded, so the evidence could show diligence but not a decision. A decision without a stated reason is a click, not evidence. The position is stamped with the version and passport it was taken against, so when the trust revalidates, the old position shows as superseded instead of silently carrying onto a document that has changed.', best: 'This is a FUNDING position, not a clinical judgement, and it is not sent to the trust. "Do not fund" means "we will not fund this on the current evidence", never "this protocol is wrong": the clinical decision remains the trust\'s. If you need more before you can decide, use "Ask the trust" and raise a governed clarification.', source: 'James, 16/07/2026: "actionable accept/reject/ask?" Project Instructions v0.03 section 18 (reconstructable decisions) and section 4 (the AI and the platform are not the clinical decision-maker).' },
   'insurer.thread': { what: 'Everything recorded about one regimen: every certificate, re-check, question and funding position, newest first.', why: 'A flat list answers "what did we do today". This answers "what have we asked about this drug, and what did we conclude", which is the question you actually get asked six months later in a dispute.', best: 'Read it before taking or changing a position: it shows whether you already asked, what came back, and what you decided against which version.', source: 'James, 16/07/2026: track the asks against a drug or a protocol. Built on the existing evidence record; session-only, same honest limit.' },
@@ -2517,7 +2518,7 @@ const state = {
   role: 'clinician',
   activeId: null,
   depthLevel: 'clinical',
-  find: { q: '', semantic: false, tumourGroup: 'all', intent: 'all', status: 'all', blueteq: 'all', sortKey: 'title', sortDir: 'asc', showCorpus: false, page: 0, view: 'live' },
+  find: { q: '', semantic: false, tumourGroup: 'all', intent: 'all', status: 'all', blueteq: 'all', sortKey: 'title', sortDir: 'asc', showCorpus: false, page: 0, view: 'wecollate' },
   authoring: { changesOnly: false, anchored: false, anchorCustom: null, checkers: ['','',''], approvalRecorded: false, signoffOpen: false, recheckScenario: 'genuine', recheckRun: false, recheckRef: null, recheckVerdict: null, targetVersion: null, compareVersion: null },
   queueOpen: null,           // approval queue: which item is expanded into full review
   qrComment: '', qrQuestion: '', qrDecline: '',   // approval review drafts (comment, question to author, decline reason)
@@ -4343,13 +4344,78 @@ function semanticMatchExcerpt(p, q){
   }
   return null;
 }
+/* ---------- Library lenses: whose document am I looking at? (16/07/2026) ----------
+   James: a page splitter asking whether the user wants their own file library or
+   the WeCollate library, and a clear answer to "where does a saved copy or a
+   draft actually go?"
+
+   Built as an always-visible lens rather than a question on arrival. A splitter
+   that ASKS costs a click every time and is read once and then clicked through
+   blindly; a lens that SHOWS answers the same question permanently and can be
+   switched in one click. Same information, no toll.
+
+   The four lenses are read from data that already exists. Nothing is invented:
+     - WeCollate library : the published corpus and alliance baselines. NOT yours.
+                           privacyScope alliance_master. Read, adopt, template.
+     - My trust          : baselines your trust adopted, plus your trust's saved
+                           copies (state.trustForks). privacyScope trust_private.
+     - My drafts         : status 'draft'. Yours until you submit it. No passport.
+     - Archived          : pre-existing, unchanged.
+
+   This is where "Save a copy to your trust" lands (My trust) and where "Author a
+   new version" lands (My drafts): the destination is now nameable, which is what
+   was missing. Clinician-only: pharma and insurer receive a projection of the
+   approved set and have no trust library or drafts of their own, so they keep the
+   single unlensed list and the lens strip is not rendered for them. */
+const LIB_LENSES = [
+  ['wecollate', 'WeCollate library', 'The published corpus and alliance baselines. Shared with the network, owned by nobody here: adopt it, copy it to your trust, or use it as a template. You cannot edit it in place.'],
+  ['trust', 'My trust', 'What your trust has adopted, and the private copies your trust holds on a shared baseline. Visible to your trust only (privacyScope: trust_private).'],
+  ['drafts', 'My drafts', 'Protocols in progress. A draft has no passport, is invisible to pharma and insurer profiles, and is never clinically usable until it goes through sign-off.'],
+  ['archived', 'Archived', 'Withdrawn from the library and from every pharma and insurer projection. Kept so the record is complete: open one to see why, reinstate it, or use it as a template.']
+];
+function libLens(){ return state.find.view || 'wecollate'; }
+function libPool(all){
+  const forks = state.trustForks || {};
+  switch (libLens()) {
+    case 'archived': return all.filter(p => p.status === 'archived');
+    case 'drafts':   return all.filter(p => p.status === 'draft');
+    /* A trust's library is what it has saved a copy of, plus what it has adopted.
+       Adoption is not modelled per-trust in the seed data, so this shows saved
+       copies only and says so on the surface rather than implying a fuller list. */
+    case 'trust':    return all.filter(p => forks[p.id] && p.status !== 'archived');
+    default:         return all.filter(p => p.status !== 'archived' && p.status !== 'draft');
+  }
+}
+function renderLibLenses(all){
+  if (state.role !== 'clinician') return '';
+  const forks = state.trustForks || {};
+  const n = {
+    wecollate: all.filter(p => p.status !== 'archived' && p.status !== 'draft').length,
+    trust: all.filter(p => forks[p.id] && p.status !== 'archived').length,
+    drafts: all.filter(p => p.status === 'draft').length,
+    archived: all.filter(p => p.status === 'archived').length
+  };
+  const cur = LIB_LENSES.find(l => l[0] === libLens()) || LIB_LENSES[0];
+  return `
+  <div class="card" style="background:var(--surface-1)">
+    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center">
+      <span class="text-caption text-muted">Whose library? ${helpBtn('find.lens')}</span>
+      ${LIB_LENSES.map(([id, label]) => `<button type="button" class="smpc-chip" aria-pressed="${libLens() === id}" data-action="find-view" data-view="${id}">${label} (${n[id]})</button>`).join('')}
+    </div>
+    <p class="text-caption text-muted mt-2">${cur[2]}</p>
+    ${libLens() === 'trust' && !n.trust ? '<p class="text-caption text-muted mt-1">Your trust holds no saved copies yet this session. Open a baseline in the WeCollate library and choose "Save a copy to your trust": it will appear here.</p>' : ''}
+    ${libLens() === 'drafts' && !n.drafts ? '<p class="text-caption text-muted mt-1">No drafts. Use Build, or open a baseline and choose "Author a new version": the draft will appear here.</p>' : ''}
+  </div>`;
+}
 function renderFind(){
   const f = state.find;
   const all = allProtocols();
-  // Archived protocols live in their own tab: excluded from the default list, searchable separately (clinician only; other roles never receive them).
+  // Archived protocols live in their own lens: excluded from the default list, searchable separately (clinician only; other roles never receive them).
   const archivedAll = all.filter(p => p.status === 'archived');
   const liveAll = all.filter(p => p.status !== 'archived');
-  const pool = f.view === 'archived' ? archivedAll : liveAll;
+  /* Pharma and insurer never get lenses: they receive one projection of the
+     approved set and have no trust library or drafts of their own. */
+  const pool = state.role === 'clinician' ? libPool(all) : liveAll;
   let rows = pool.filter(matchesFind);
   if (f.fullDemo) rows = rows.filter(p => p.full);
   rows.sort((a,b) => {
@@ -4400,16 +4466,11 @@ function renderFind(){
       <div class="h1">${heading} ${helpBtn(state.role==='pharma' ? 'pharma.isolation' : (state.role==='insurer' ? 'insurer.view' : 'shell.find'))}</div>
       <div class="row" style="gap:8px;align-items:center">
         ${state.role === 'clinician' ? `<button type="button" class="btn btn-small" data-action="nav" data-route="revalidate">Revalidate protocols ${helpBtn('nav.revalidate')}</button>` : ''}
-        <span class="text-small text-secondary">${total} of ${pool.length} in the ${f.view === 'archived' ? 'archive' : 'library'} ${helpBtn('find.corpus')}</span>
+        <span class="text-small text-secondary">${total} of ${pool.length}${state.role === 'clinician' ? ' in ' + ((LIB_LENSES.find(l => l[0] === libLens()) || LIB_LENSES[0])[1]) : ' in the library'} ${helpBtn('find.corpus')}</span>
       </div>
     </div>
     ${state.draftSavedNotice ? `<div class="preview-note">${(function(){const n=state.draftSavedNotice; state.draftSavedNotice=null; return n;})()}</div>` : ''}
-    ${state.role === 'clinician' ? `
-    <div class="row" style="gap:6px;align-items:center">
-      <button type="button" class="smpc-chip" aria-pressed="${f.view !== 'archived'}" data-action="find-view" data-view="live">Library (${liveAll.length})</button>
-      <button type="button" class="smpc-chip" aria-pressed="${f.view === 'archived'}" data-action="find-view" data-view="archived">Archived (${archivedAll.length}) ${helpBtn('find.archived')}</button>
-    </div>
-    ${f.view === 'archived' ? '<p class="text-caption text-muted">Archived protocols are excluded from the default library and from every pharma and insurer projection. Open one to see why it was archived, reinstate it or use it as a template.</p>' : ''}` : ''}
+    ${renderLibLenses(all)}
     ${portalCard}${insurerCard}
     <div class="card">
       <div class="row" style="flex-wrap:wrap">
@@ -11200,7 +11261,7 @@ function initEvents(){
     else if (action === 'evt-follow') { const org = btn.getAttribute('data-org'); state.eventFollows = state.eventFollows || {}; state.eventFollows[org] = !state.eventFollows[org]; renderAll(); }
     else if (action === 'evt-new-create') { const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; }; const title = g('evNewTitle'); if (title) { state.eventsMine = state.eventsMine || []; state.eventsMine.push({ id:'evm_'+Date.now().toString(36), title:title, type:g('evNewType')||'Seminar', mode:'Online', organiser:user().trust, by:'Trust', date:g('evNewDate')||'', loc:g('evNewLoc')||'Online', tags:['Posted by you'], cpd:'', reg:0, mine:true }); state.eventNewOpen = false; } renderAll(); }
     else if (action === 'clear-find') { state.find.q = ''; state.find.tumourGroup = 'all'; state.find.intent = 'all'; state.find.status = 'all'; state.find.blueteq = 'all'; state.find.page = 0; renderAll(); }
-    else if (action === 'fork-trust') { state.trustForks = state.trustForks || {}; state.trustForks[btn.getAttribute('data-id')] = { changedLines: 0 }; renderAll(); }
+    else if (action === 'fork-trust') { state.trustForks = state.trustForks || {}; const fid = btn.getAttribute('data-id'); state.trustForks[fid] = { changedLines: 0 }; const fp = findProtocol(fid); state.draftSavedNotice = 'Saved a copy to your trust: "' + (fp ? fp.title : fid) + '" is now in <strong>My trust</strong> in the protocol library, private to your trust (privacyScope: trust_private). The shared baseline is untouched.'; renderAll(); }
     else if (action === 'toggle-notif') { state.notifOpen = !state.notifOpen; state.roleMenuOpen = false; renderAll(); }
     else if (action === 'fhir-preview') { state.fhirPreview = !state.fhirPreview; renderAll(); }
     else if (action === 'fhir-download') {
@@ -12006,7 +12067,7 @@ function initEvents(){
     else if (action === 'delete-noop') { /* keep the delete dialog open on inside clicks */ }
     else if (action === 'delete-next') { state.deleteStep = Math.min(2, (state.deleteStep || 1) + 1); renderAll(); }
     else if (action === 'delete-confirm') { const id = btn.getAttribute('data-id'); const i = PROTOCOLS.findIndex(x => x.id === id); if (i >= 0 && PROTOCOLS[i].status === 'draft') { queueAudit(user().name + ' deleted draft "' + PROTOCOLS[i].title + '"'); PROTOCOLS.splice(i, 1); } state.deleteOpen = null; state.deleteStep = 1; state.activeId = null; state.route = 'find'; renderAll(); }
-    else if (action === 'act-save') { const c = pageActionCtx(); if (c.id) { state.trustForks = state.trustForks || {}; state.trustForks[c.id] = { changedLines: 0 }; state.actionMsg = 'Saved a trust copy (private on the shared baseline).'; } renderAll(); }
+    else if (action === 'act-save') { const c = pageActionCtx(); if (c.id) { state.trustForks = state.trustForks || {}; state.trustForks[c.id] = { changedLines: 0 }; state.actionMsg = 'Saved a trust copy: it is now in "My trust" in the protocol library, private to your trust. The shared baseline is untouched.'; } renderAll(); }
     else if (action === 'act-submit') { state.actionMsg = 'Submitted for approval: it enters the checker queue (prototype, session only).'; renderAll(); }
     else if (action === 'act-approve') { state.actionMsg = 'Approved and recorded with its evidence (prototype). Normally three named checkers, never the author.'; renderAll(); }
     else if (action === 'act-decline') { state.route = 'approvals'; state.actionsOpen = false; state.actionMsg = ''; renderAll(); }
