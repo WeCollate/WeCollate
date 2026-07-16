@@ -2504,6 +2504,16 @@ const PROTOCOLS = [
   { id: 'mphaacml', reference: 'MPHAACML', title: 'Asciminib in chronic myeloid leukaemia', tumourGroup: 'Haematology', intent: 'Treatment', status: 'approved', version: 'v1.2', issued: 'March 2026', freshDays: 11, reviewDays: 200, checkVerdict: 'minor', route: 'Oral', full: true,
     semantic: ['tyrosine kinase inhibitor', 'philadelphia positive', 'blueteq', 'phototoxicity', 'qt prolongation', 'oral'] },
   { id: 'aavd-hl', reference: 'AAVD-HL', title: 'AAVD Hodgkin lymphoma', tumourGroup: 'Haematology', intent: 'Treatment', status: 'approved', version: 'v1.0', issued: 'illustrative', freshDays: 18, route: 'IV', full: false, semantic: ['hodgkin', 'lymphoma', 'brentuximab'] },
+  /* One archived protocol in the seed (added 16/07/2026). The archive capability
+     was fully built and exemplary (reason required, three-step confirm, version
+     log, audit line, removed from every pharma and insurer projection, reinstate
+     offered) but NO seed protocol carried the status, so the Archived lens shipped
+     permanently empty and the whole feature was invisible. A capability nobody can
+     see is not a capability. The reason below is an ordinary, plausible one:
+     superseded by a newer regimen, which is why most protocols are archived. */
+  { id: 'beacopp-esc', reference: 'BEACOPP-ESC', title: 'Escalated BEACOPP, Hodgkin lymphoma', tumourGroup: 'Haematology', intent: 'Treatment', status: 'archived', version: 'v2.1', issued: 'illustrative', freshDays: 410, route: 'IV / Oral', full: false,
+    archived: { reason: 'Superseded by escalated BEACOPDac. The alliance moved to the dacarbazine-substituted regimen; this version is retained for the record and for anyone reconciling an older prescription.', by: 'Dr Priya Kaur', when: '11 May 2026' },
+    semantic: ['hodgkin', 'lymphoma', 'superseded', 'bleomycin', 'procarbazine'] },
   { id: 'abema-fulv', reference: 'ABEMA-FULV', title: 'Abemaciclib and fulvestrant, metastatic breast cancer', tumourGroup: 'Breast', intent: 'Treatment', status: 'under review', version: 'v1.1', issued: 'illustrative', freshDays: 62, reviewDays: -8, checkVerdict: 'significant', route: 'Oral / IM', full: false, semantic: ['cdk4/6 inhibitor', 'endocrine therapy', 'breast'] },
   { id: 'alpe-fulv', reference: 'ALPE-FULV', title: 'Alpelisib and fulvestrant, metastatic breast cancer', tumourGroup: 'Breast', intent: 'Treatment', status: 'approved', version: 'v1.0', issued: 'illustrative', freshDays: 27, route: 'Oral / IM', full: false, semantic: ['pik3ca', 'hyperglycaemia', 'breast'] },
   { id: 'adj-alectinib', reference: 'ADJ-ALEC', title: 'Adjuvant alectinib', tumourGroup: 'Thoracic', intent: 'Adjuvant', status: 'approved', version: 'v1.0', issued: 'illustrative', freshDays: 9, route: 'Oral', full: false, semantic: ['alk positive', 'lung', 'oral'] },
