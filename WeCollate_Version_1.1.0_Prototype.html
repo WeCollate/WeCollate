@@ -852,6 +852,9 @@ function flagStatusPill(id){ const f = flag(id); if (!f) return ''; if (f.pct ==
 /* ---------- Contextual hover-help content: what / why / best practice / source ---------- */
 const HELP_CONTENT = {
   'smpc.source': { what: 'Opens the actual SmPC document with the changed passage highlighted and anchored.', why: 'The WAS/NOW summary tells you what changed; sometimes you need to read it in the context of the full label before acting.', best: 'In production this opens the manufacturer-uploaded SmPC or links to the electronic medicines compendium (medicines.org.uk) via API. In the prototype the section text is illustrative, with the change marked.' },
+  'boards.postKind': { what: 'What kind of post this is: a question, a finding, a protocol share, an event or a survey. The type sets the cover colour on the group board.', why: 'A wall of identical rows hides the difference between "can anyone help" and "here is what we changed". The type lets the group scan the board and find the thing they came for.', best: 'Pick the type honestly. A finding labelled as a question gets answers instead of adoption.', source: 'WeCollate boards modernisation, 16/07/2026.' },
+  'boards.upload': { what: 'Attach a document, deck, spreadsheet, image or protocol extract to your post.', why: 'Peer guidance often is a file: an audit summary, a worked SOP, a slide from a meeting. Making people email it separately is how the knowledge gets lost.', best: 'In this prototype only the file NAME and TYPE are recorded. No file is uploaded, stored or shared, and nothing is sent anywhere.', source: 'WeCollate boards modernisation, 16/07/2026. Illustrative, session only.' },
+  'boards.noPid': { what: 'An explicit confirmation that your attachments carry no patient identifiers. Required before a post with attachments can go to the group.', why: 'An attachment is the easiest way to leak patient data, and the platform cannot read inside a file to check. So it asks you, records that it asked, and blocks until you answer.', best: 'Read it, do not tick it reflexively. The file name is checked for a ten-digit NHS-number pattern and blocked automatically, but the contents are your responsibility. If in doubt, do not attach it.', source: 'Project Instructions v0.03 section 12: never assume a message is free of patient data because the user says so.' },
   'boards.postAct': { what: 'Act on a professional body post: register interest in an event, record that you responded to a survey, or save a finding to your task list.', why: 'A body group is only useful if its events, findings and surveys lead somewhere; this turns a notice into a tracked action instead of another thing scrolled past.', best: 'Registering or responding is illustrative and session only in the prototype; nothing is sent to the body, and surveys collect no response content here.' },
   'boards.react': { what: 'React to a post: Useful, Endorse, Will adopt or Following, plus Save and Share.', why: 'These carry more meaning than a like. Endorse and Will adopt become a real signal of how the network is taking something up, which feeds the collective-assurance picture.', best: 'Use Will adopt only when your trust genuinely intends to. Reactions are illustrative and session only in the prototype.' },
   'si.invite': { what: 'Invite people to help run and manage this project, from your trust or from similar groups across the network, and optionally announce it on the discussion boards.', why: 'A shared project needs the right people early. Building the collaboration in at creation is what turns a good idea into a joined-up piece of work rather than another solo effort.', best: 'Invite a small core to manage it; others can request to join later. The finer access and visibility are set once the project exists. Session only in the prototype.' },
@@ -2495,7 +2498,8 @@ const state = {
   messages: { activeThread: null, draft: '', pvConsent: false, blockedNhs: false, blockedPromo: false, sent: [] },
   salesSim: false,
   access: { contrast: false, textSize: 'm', reading: false, accessOpen: false },
-  forum: { roomId: null, threadId: null, draftTitle: '', draftBody: '', memberships: { general: 'member' }, peerTrust: 'all', peerSpec: 'all', blockedPid: false, forwardOpen: null, forwarded: {}, postActed: {}, react: {}, saved: {} },
+  forum: { roomId: null, threadId: null, draftTitle: '', draftBody: '', memberships: { general: 'member' }, peerTrust: 'all', peerSpec: 'all', blockedPid: false, forwardOpen: null, forwarded: {}, postActed: {}, react: {}, saved: {},
+           draftKind: 'Question', draftAtts: [], draftAttName: '', draftAttKind: 'Document', draftNoPid: false, attBlocked: false },
   forumThreads: null, forumTasks: [], forumAudit: [],
   horizonRegion: 'bsol', horizonOnePager: null,
   pharmaClass: 'msl',        // msl | medinfo | sales | marketing | regulatory
@@ -7526,6 +7530,92 @@ function grpFiltered(){
   else list = list.slice().sort((a, b) => groupThreads(b.id).length - groupThreads(a.id).length);
   return list;
 }
+/* ---------- Post-type cover cards + media composer (16/07/2026) ----------
+   A group post is not all one thing: a question, a finding, an event and a
+   protocol share need to be told apart at a glance. The cover strip carries the
+   type, so the list reads as a board rather than a wall of identical rows.
+
+   Attachments: names and types only. The prototype stores no file content and
+   uploads nothing. Every attachment carries an explicit no-patient-identifier
+   confirmation before it can be posted, because an attachment is the easiest way
+   to leak a patient identifier and a filename alone can carry one. Project
+   Instructions v0.03 section 12: never assume a message is free of patient data
+   because the user says so. The NHS-number check that guards the body text is
+   applied to the attachment names too. */
+const POST_KINDS = [
+  ['Question', 'Ask peers something', '#157076'],
+  ['Finding', 'Share what you learned', '#7a5195'],
+  ['Protocol share', 'Point at a protocol or policy', '#2f6f4f'],
+  ['Event', 'A session or meeting', '#bc5090'],
+  ['Survey', 'Ask the group to respond', '#c2622d']
+];
+function postKindMeta(k){
+  const m = POST_KINDS.find(x => x[0] === k);
+  return m || ['Question', 'Ask peers something', '#157076'];
+}
+function postCoverCard(t){
+  const kind = t.postKind || 'Question';
+  const meta = postKindMeta(kind);
+  const likes = (t.likes || 0) + (t.likedByMe ? 1 : 0);
+  const atts = (t.attachments || []);
+  return `
+  <button type="button" class="card" style="text-align:left;width:100%;cursor:pointer;padding:0;overflow:hidden" data-action="forum-open-thread" data-id="${t.id}">
+    <div style="height:4px;background:${meta[2]}"></div>
+    <div style="padding:var(--space-4)">
+      <div class="row-between" style="gap:8px;align-items:flex-start">
+        <div style="min-width:0">
+          <div class="row" style="gap:6px;align-items:center;flex-wrap:wrap">
+            <span class="pill" style="background:${meta[2]};color:#fff">${kind}</span>
+            ${t.actionTask ? '<span class="pill pill-success">Actioned</span>' : ''}
+            ${atts.length ? '<span class="pill pill-neutral">' + atts.length + ' attachment' + (atts.length === 1 ? '' : 's') + '</span>' : ''}
+          </div>
+          <div class="text-small mt-1" style="font-weight:600">${t.title}</div>
+          <div class="text-caption text-muted mt-1">${t.by}, ${t.trust} &middot; ${t.when}</div>
+        </div>
+        <div class="text-caption text-muted" style="text-align:right;flex:none">
+          <div>${t.replies.length} repl${t.replies.length === 1 ? 'y' : 'ies'}</div>
+          <div>${likes} useful</div>
+        </div>
+      </div>
+    </div>
+  </button>`;
+}
+function postComposer(room){
+  const f = state.forum;
+  const kind = f.draftKind || 'Question';
+  const atts = f.draftAtts || [];
+  const needsConfirm = atts.length > 0;
+  const ready = f.draftTitle.trim() && (!needsConfirm || f.draftNoPid);
+  const kindBtn = (k, desc, col) => `<button type="button" class="btn btn-small ${kind === k ? '' : 'btn-ghost'}" style="${kind === k ? 'background:' + col + ';color:#fff;border-color:' + col : ''}" data-action="forum-kind" data-val="${k}" title="${desc}">${k}</button>`;
+  return `
+  <div class="card stack">
+    <div class="h3">Post to the group ${helpBtn('boards.ask')}</div>
+    <div>
+      <div class="text-caption text-muted">What kind of post is this? ${helpBtn('boards.postKind')}</div>
+      <div class="row mt-1" style="gap:6px;flex-wrap:wrap">${POST_KINDS.map(([k, d, c]) => kindBtn(k, d, c)).join('')}</div>
+      <div class="text-caption text-muted mt-1">${postKindMeta(kind)[1]}. The type sets the cover colour so the group can scan the board.</div>
+    </div>
+    <div class="field"><label class="field-label">${kind === 'Event' ? 'Event title' : (kind === 'Survey' ? 'What are you asking the group?' : 'Question or topic title')}</label><input type="text" id="forumTitle" data-bind="forumDraftTitle" value="${f.draftTitle.replace(/"/g,'&quot;')}" placeholder="${kind === 'Event' ? 'For example: Regional aseptic capacity workshop' : (kind === 'Finding' ? 'For example: What we changed after our extravasation audit' : 'For example: Cooling eye pads as part of a treatment plan, done elsewhere?')}"></div>
+    <div class="field"><label class="field-label">Context (never patient details)</label><input type="text" id="forumBody" data-bind="forumDraftBody" value="${f.draftBody.replace(/"/g,'&quot;')}" placeholder="What you are considering and what you want to know"></div>
+    <div>
+      <div class="text-caption text-muted">Attach a file ${helpBtn('boards.upload')}</div>
+      <div class="row mt-1" style="gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="text" data-bind="forumAttName" value="${(f.draftAttName || '').replace(/"/g,'&quot;')}" placeholder="File name, e.g. Extravasation audit summary.pdf" style="flex:1;min-width:200px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
+        <select data-bind="forumAttKind" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px">
+          ${['Document','Slide deck','Spreadsheet','Image','Protocol extract'].map(x => `<option ${f.draftAttKind === x ? 'selected' : ''}>${x}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-small" data-action="forum-att-add" ${(f.draftAttName || '').trim() ? '' : 'disabled'}>Attach</button>
+      </div>
+      ${f.attBlocked ? '<div class="mt-2" style="padding:var(--space-3);border-radius:var(--radius);background:var(--bg-danger);color:var(--text-danger)"><strong>Blocked: that file name contains something that looks like an NHS number.</strong> A patient identifier must never travel in a file name. Rename the file and attach it again.</div>' : ''}
+      ${atts.length ? `<div class="mt-2">${atts.map((a, i) => `<div class="attention-item"><div><span class="text-small">${a.name}</span> <span class="text-caption text-muted">${a.kind}</span></div><button type="button" class="btn btn-small btn-ghost" data-action="forum-att-del" data-idx="${i}">Remove</button></div>`).join('')}</div>` : '<p class="text-caption text-muted mt-1">No attachments. The prototype records the name and type only; no file is uploaded or stored.</p>'}
+    </div>
+    ${f.blockedPid ? '<div style="padding:var(--space-3);border-radius:var(--radius);background:var(--bg-danger);color:var(--text-danger)"><strong>Blocked: possible NHS number detected.</strong></div>' : ''}
+    ${needsConfirm ? `<label class="checkbox-row"><input type="checkbox" data-bind="forumNoPid" ${f.draftNoPid ? 'checked' : ''}> I confirm these attachments contain no patient identifiers (required) ${helpBtn('boards.noPid')}</label>` : ''}
+    <div><button type="button" class="btn btn-primary" data-action="forum-post" data-id="${room.id}" ${ready ? '' : 'disabled'}>Post to the group</button></div>
+    ${needsConfirm && !f.draftNoPid ? '<p class="text-caption text-muted">The confirmation is required before a post with attachments can go to the group.</p>' : ''}
+    <p class="text-caption text-muted">One question here replaces a dozen emails and an afternoon of searching: peers across the UK answer once, in a place that is audited, moderated, and ends in an action.</p>
+  </div>`;
+}
 function renderBoards(){
   const f = state.forum;
   const room = f.roomId ? boardGroup(f.roomId) : null;
@@ -7644,20 +7734,8 @@ function renderBoards(){
         </div>
       </div>` : ''}
       ${owner && grpState().approvedReq[room.id] ? '<div class="card" style="background:var(--surface-1)"><p class="text-caption text-muted">Dr Alex Munro (illustrative) was approved into this group. The approval is audited.</p></div>' : ''}
-      ${threads.length ? threads.map(t => `
-      <button type="button" class="card" style="text-align:left;width:100%;cursor:pointer" data-action="forum-open-thread" data-id="${t.id}">
-        <div class="row-between"><span class="text-small" style="font-weight:500">${t.postKind ? '<span class="pill pill-neutral">' + t.postKind + '</span> ' : ''}${t.title}</span><span class="text-caption text-muted">${t.replies.length} repl${t.replies.length===1?'y':'ies'} · ${(t.likes || 0) + (t.likedByMe ? 1 : 0)} like${((t.likes||0)+(t.likedByMe?1:0))===1?'':'s'}</span></div>
-        <div class="text-caption text-muted mt-1">${t.by}, ${t.trust} · ${t.when}${t.actionTask ? ' · <span class="pill pill-success">actioned</span>' : ''}</div>
-      </button>`).join('') : '<p class="text-small text-secondary">No posts in this group yet.</p>'}
-      ${canPost ? `
-      <div class="card stack">
-        <div class="h3">Post to the group ${helpBtn('boards.ask')}</div>
-        <div class="field"><label class="field-label">Question or topic title</label><input type="text" id="forumTitle" data-bind="forumDraftTitle" value="${f.draftTitle.replace(/"/g,'&quot;')}" placeholder="For example: Cooling eye pads as part of a treatment plan, done elsewhere?"></div>
-        <div class="field"><label class="field-label">Context (never patient details)</label><input type="text" id="forumBody" data-bind="forumDraftBody" value="${f.draftBody.replace(/"/g,'&quot;')}" placeholder="What you are considering and what you want to know"></div>
-        ${f.blockedPid ? '<div style="padding:var(--space-3);border-radius:var(--radius);background:var(--bg-danger);color:var(--text-danger)"><strong>Blocked: possible NHS number detected.</strong></div>' : ''}
-        <div><button type="button" class="btn btn-primary" data-action="forum-post" data-id="${room.id}" ${f.draftTitle.trim() ? '' : 'disabled'}>Post to the group</button></div>
-        <p class="text-caption text-muted">One question here replaces a dozen emails and an afternoon of searching: peers across the UK answer once, in a place that is audited, moderated, and ends in an action.</p>
-      </div>` : (mem === 'member' && room.body ? `<div class="card" style="background:var(--surface-1)"><p class="text-caption text-muted">Only ${room.body} posts new items in this group; open any post to comment. ${helpBtn('boards.bodyGroup')}</p></div>` : '')}
+      ${threads.length ? threads.map(t => postCoverCard(t)).join('') : '<p class="text-small text-secondary">No posts in this group yet.</p>'}
+      ${canPost ? postComposer(room) : (mem === 'member' && room.body ? `<div class="card" style="background:var(--surface-1)"><p class="text-caption text-muted">Only ${room.body} posts new items in this group; open any post to comment. ${helpBtn('boards.bodyGroup')}</p></div>` : '')}
       ${actioned.length ? `
       <div class="card">
         <div class="h3">Actioned outcomes ${helpBtn('boards.action')}</div>
@@ -10633,14 +10711,39 @@ function initEvents(){
     else if (action === 'grp-approve-req') { const id = btn.getAttribute('data-id'); grpState().approvedReq[id] = true; forumLog(user().name + ' approved a join request into ' + (boardGroup(id) || { name: id }).name); renderAll(); }
     else if (action === 'forum-post') {
       const f = state.forum;
-      if (/\b\d{3}[ -]?\d{3}[ -]?\d{4}\b/.test(f.draftTitle + ' ' + f.draftBody)) { f.blockedPid = true; renderAll(); }
+      const atts = f.draftAtts || [];
+      // The identifier check covers the attachment NAMES too: a filename is as
+      // capable of carrying an NHS number as the body text (v0.03 section 12).
+      const scan = f.draftTitle + ' ' + f.draftBody + ' ' + atts.map(a => a.name).join(' ');
+      if (/\b\d{3}[ -]?\d{3}[ -]?\d{4}\b/.test(scan)) { f.blockedPid = true; renderAll(); }
+      else if (atts.length && !f.draftNoPid) { renderAll(); } // confirmation is required, never assumed
       else {
         f.blockedPid = false;
-        forumThreads().unshift({ id: 'ft_' + Date.now().toString(36), roomId: btn.getAttribute('data-id'), title: f.draftTitle.trim(), by: user().name, trust: user().trust, when: 'just now', body: f.draftBody.trim() || '(no further context given)', replies: [], actionTask: null });
-        forumLog(user().name + ' posted "' + f.draftTitle.trim().slice(0,60) + '"');
-        f.draftTitle = ''; f.draftBody = '';
+        forumThreads().unshift({ id: 'ft_' + Date.now().toString(36), roomId: btn.getAttribute('data-id'), title: f.draftTitle.trim(), by: user().name, trust: user().trust, when: 'just now', body: f.draftBody.trim() || '(no further context given)', replies: [], actionTask: null, postKind: f.draftKind || 'Question', attachments: atts.slice() });
+        forumLog(user().name + ' posted "' + f.draftTitle.trim().slice(0,60) + '"' + (atts.length ? ' with ' + atts.length + ' attachment(s), no-identifier confirmation given' : ''));
+        f.draftTitle = ''; f.draftBody = ''; f.draftAtts = []; f.draftNoPid = false; f.draftKind = 'Question'; f.draftAttName = ''; f.attBlocked = false;
         renderAll();
       }
+    }
+    else if (action === 'forum-kind') { state.forum.draftKind = btn.getAttribute('data-val'); renderAll(); }
+    else if (action === 'forum-att-add') {
+      const f = state.forum;
+      const nm = (f.draftAttName || '').trim();
+      if (!nm) { renderAll(); return; }
+      if (/\b\d{3}[ -]?\d{3}[ -]?\d{4}\b/.test(nm)) { f.attBlocked = true; renderAll(); return; }
+      f.attBlocked = false;
+      f.draftAtts = f.draftAtts || [];
+      f.draftAtts.push({ name: nm, kind: f.draftAttKind || 'Document' });
+      f.draftAttName = '';
+      f.draftNoPid = false; // a new attachment invalidates any earlier confirmation
+      renderAll();
+    }
+    else if (action === 'forum-att-del') {
+      const f = state.forum;
+      const i = parseInt(btn.getAttribute('data-idx'), 10);
+      if (f.draftAtts && i >= 0) f.draftAtts.splice(i, 1);
+      f.draftNoPid = false;
+      renderAll();
     }
     else if (action === 'forum-reply') {
       const input = document.getElementById('forumReply');
@@ -11502,6 +11605,7 @@ function initEvents(){
     else if (bind === 'insClarRegimen') { state.insurerClarif.regimen = el.value; renderAll(); }
     else if (bind === 'insClarPv') { state.insurerClarif.pv = el.checked; renderAll(); }
     else if (bind === 'salesSim') { state.salesSim = el.checked; renderAll(); }
+    else if (bind === 'forumAttName') { state.forum.draftAttName = el.value; state.forum.attBlocked = false; renderAll(); focusEl('input[data-bind="forumAttName"]'); }
     else if (bind === 'forumDraftTitle') { state.forum.draftTitle = el.value; renderAll(); focusEl('input[data-bind="forumDraftTitle"]'); }
     else if (bind === 'siNewInviteQ') { siState().newP.inviteQ = el.value; renderAll(); focusEl('input[data-bind="siNewInviteQ"]'); }
     else if (bind === 'forumDraftBody') { state.forum.draftBody = el.value; renderAll(); focusEl('input[data-bind="forumDraftBody"]'); }
@@ -11533,6 +11637,8 @@ function initEvents(){
     else if (bind === 'smpcSeverity') { state.smpcDraft.severity = el.value; }
     else if (bind === 'eduNonPromo') { state.eduDraft.nonPromo = el.checked; renderAll(); }
     else if (bind === 'hzNonPromo') { state.hzDraft.nonPromo = el.checked; renderAll(); }
+    else if (bind === 'forumNoPid') { state.forum.draftNoPid = el.checked; renderAll(); }
+    else if (bind === 'forumAttKind') { state.forum.draftAttKind = el.value; renderAll(); }
     else if (bind === 'smpcMine') { state.smpc.mineOnly = el.checked; renderAll(); }
     else if (bind === 'smpcBulkSel') { const id = el.getAttribute('data-id'), pid = el.getAttribute('data-pid'); state.smpcBulkSel = state.smpcBulkSel || {}; state.smpcBulkSel[id] = state.smpcBulkSel[id] || {}; state.smpcBulkSel[id][pid] = el.checked; renderAll(); }
     else if (bind === 'smpcHideReviewed') { state.smpc.hideReviewed = el.checked; renderAll(); }
