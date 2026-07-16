@@ -863,6 +863,9 @@ const HELP_CONTENT = {
   'policies.edit': { what: 'Author and edit the policy: its title, version, live point of contact, and the content of each section.', why: 'A policy library is only useful if the content lives here and can be kept current, not just a list of section headings.', best: 'Write each section, reorder or add sections as needed, set a live point of contact, then Save. Saving is session-only in the prototype and the full governance and approval path still applies before a policy is issued.' },
   'revalidate.groupList': { what: 'A shared task list for your whole trust team, not just you.', why: 'Revalidation findings often need whoever is free, not the one person who ran the check; a shared list means nothing waits on an individual.', best: 'Forward a finding here when anyone on the team could action it; add it to your own to-do when it is specifically yours. Session only in the prototype.' },
   'messages.dashboard': { what: 'A glance at everything waiting in your inbox, with Community folded in.', why: 'Community requests, exchanges and to-dos are really just messages, so they belong in one place rather than a separate menu.', best: 'Click a tile to filter the list (new, awaiting your action, follow-ups due) or to open a Community area (exchange requests, policy requests, to-dos).' },
+  'insurer.evidence': { what: 'A structured record of every certificate you viewed, re-check you ran, clarification you raised and export you took: ask by ask, with the source guidance, version and passport it was taken against.', why: 'Project Instructions section 18: a governance-relevant action must be reconstructable after the fact, or for audit purposes it did not happen. An assurance position you cannot evidence is an assertion. This is what turns "we checked" into something a colleague, an auditor or a dispute can actually examine.', best: 'Export the CSV for your own analysis, or the evidence statement as a plain-language pack. Both are generated locally on your device and nothing is transmitted. READ THE HONEST LIMIT: this prototype has no backend, the record is session-only, it is not tamper-evident, and it must not be relied on in a real dispute. Who may hold this evidence, for how long, and how it is shared are governance decisions that have not been taken yet.', source: 'WeCollate Insurer Portal Plan 11/07/2026, Tier 1 item 3; Project Instructions v0.03 section 18. Built 16/07/2026 on James\'s question: how are these decisions and asks recorded, retained, downloaded, sent and accessed.' },
+  'insurer.payerHome': { what: 'The payer home: your assurance position at a glance, and the things that would be hardest to defend today.', why: 'An insurer was landing on the clinician home, which offers protocols to author and tasks to complete: none of it theirs. This answers the only question a payer actually has: can I defend what I am funding? The attention lane is ordered by consequence, not by count, because a big number is not the same as a weak position.', best: 'Work the "what weakens your position" lane top down: an unverified regimen and an overdue revalidation are the two things that break a defensibility chain. Every line routes to the surface that owns it; nothing is actioned here.', source: 'WeCollate Insurer Portal Plan, 11/07/2026, Tier 1 item 1. Built 16/07/2026. Illustrative seed data.' },
+  'insurer.boundary': { what: 'What the payer view deliberately does not carry: patient data, cost, and uptake tracking.', why: 'These absences are design decisions, not gaps. Cost may inform a decision but must never override or rank a clinical one, and the funding firewall stops payer money influencing clinical content (Project Instructions section 3). Tracking clinician uptake would be surveillance, and the measure of this platform is collaborative time saved, never clinicians observed (section 1). No patient-identifiable data reaches this role at all.', best: 'If a payer asks for cost per regimen or prescribing-behaviour data, that is a commercial-model and information-governance decision for the Product Owners (open point A5), not a feature request. Escalate it; do not build it.', source: 'Project Instructions v0.03 sections 1 and 3; Insurer Portal Plan 11/07/2026 section 3, "the boundary that shapes every feature".' },
   'forme.hub': { what: 'One page for everything waiting on you: safety warnings, checks assigned to you, your own to-dos, governance deadlines and requests from the network.', why: 'Work that needed you was scattered across four rail items, so the only way to know whether anything was waiting was to visit all four. The lanes are ordered by what happens if you do nothing, not by how many items each holds: a big number is not the same as an urgent one.', best: 'Work top down. Safety first, then anything blocking a colleague, then your own list. Every row opens the page that owns that work with the filter already applied; nothing is actioned here, so no governance gate is bypassed.', source: 'WeCollate design direction; built 16/07/2026. Counts come from the same function as the home dashboard, so the two can never disagree.' },
   'home.tile': { what: 'A live count of one kind of work waiting for you.', why: 'The home dashboard is a high-level glance; the detailed lists live in My work and the module pages.', best: 'Tap any tile to open its detail. Use Customise to reorder, group, expand or hide tiles so the board matches how you work.' },
   'nav.opsboard': { what: 'The operational board: a board-level read on how the SACT service is actually running, across ten tabs (overview, workforce and time saved, chair time and capacity, protocol throughput, approval performance, adoption, horizon and demand, economics, hat wearers, and assurance).', why: 'Clinical leads and boards ask a different question from clinicians: not "what does this protocol say" but "is the service safe, resilient and sustainable". This surface answers it with aggregate, no-PID figures.', best: 'Start on Overview for the one thing to look at today, then open Hat wearers to check nothing essential rests on a single person. Every figure is illustrative and aggregate; cost and capacity inform, they never override a clinical decision.' },
@@ -1241,6 +1244,13 @@ const systemAccounts = [
   { id: 'acc7', name: 'Sarah Whitmore', role: 'Medical Science Liaison (MSL)', activeStatus: 'Active', sector: 'pharma' },
   { id: 'acc8', name: 'James Okafor', role: 'Account manager (sales team)', activeStatus: 'Active', sector: 'pharma' },
   { id: 'acc9', name: 'Mark Ellison', role: 'Clinical governance analyst', activeStatus: 'Active', sector: 'insurer' },
+  /* The insurer sector had ONLY an analyst account, so level i1 (Medical officer)
+     was never assigned to anybody and the governed clarification channel was
+     unreachable by any account, by any route: a fully built surface with no way
+     in. Found 16/07/2026 while testing the evidence record. The pharma sector
+     carries both an MSL and a sales account precisely so the gate can be shown
+     working from both sides; the insurer sector now does the same. */
+  { id: 'acc11', name: 'Dr Nadia Okonjo', role: 'Medical officer (insurer)', activeStatus: 'Active', sector: 'insurer' },
   { id: 'acc10', name: 'Dr Helen Voss', role: 'Alliance formulary reviewer (EAG)', activeStatus: 'Active', sector: 'institutional' }
 ];
 /* ---------- Sectors and per-sector, per-user module control ---------- */
@@ -1302,7 +1312,7 @@ function sectorLevels(sec){ return USER_LEVELS[sec] || []; }
 function levelOf(acc){ if (!acc || !acc.level) return null; return sectorLevels(acc.sector).find(l => l.id === acc.level) || null; }
 function levelById(sec, id){ return sectorLevels(sec).find(l => l.id === id) || null; }
 /* Seed level assignments: existing named users map onto the levels. */
-const SEED_LEVELS = { acc1: 'c1', acc2: 'c3', acc3: 'c1', acc4: 'c2', acc5: 'c1', acc6: 'c4', acc7: 'p1', acc8: 'p5', acc9: 'i2' };
+const SEED_LEVELS = { acc1: 'c1', acc2: 'c3', acc3: 'c1', acc4: 'c2', acc5: 'c1', acc6: 'c4', acc7: 'p1', acc8: 'p5', acc9: 'i2', acc11: 'i1' };
 /* Seed per-account profiles: clearly fake contact data (nhs.example). Visibility defaults to UK wide because collaboration is the point. */
 const SEED_PROFILES = {
   acc1: { knownAs: 'Priya', phone: '0121 000 0101', trust: 'Sandwell and West Birmingham NHS Trust (illustrative)' },
@@ -1314,6 +1324,7 @@ const SEED_PROFILES = {
   acc7: { knownAs: 'Sarah', phone: '020 7000 0107', trust: 'Illustrative pharmaceutical company' },
   acc8: { knownAs: 'James', phone: '020 7000 0108', trust: 'Illustrative pharmaceutical company' },
   acc9: { knownAs: 'Mark', phone: '020 7000 0109', trust: 'Illustrative health insurer' },
+  acc11: { knownAs: 'Nadia', phone: '020 7000 0111', trust: 'Illustrative health insurer' },
   acc10: { knownAs: 'Helen', phone: '020 7000 0110', trust: 'Illustrative alliance formulary body' }
 };
 function seedUsername(name){ return name.toLowerCase().replace(/^(dr|sister|mr|mrs|ms|prof)\s+/, '').replace(/[^a-z ]/g, '').trim().replace(/ +/g, '.'); }
@@ -3745,7 +3756,13 @@ function renderRoute(){
     case 'community': return renderCommunity();
     case 'admin': return renderAdmin();
     case 'policies': return renderPolicies();
-    case 'messages': return renderMessages();
+    /* The insurer's messages route is the governed clarification channel, not the
+       clinician mailbox. renderInsurerClarifications() existed and was fully built
+       (PV gate, NHS-number block, turnaround) but nothing called it: the route fell
+       through to renderMessages and, for an insurer, out to the payer home. So the
+       rail item "Clarifications" and every "Raise a clarification" button led to the
+       wrong page and the ask channel was unreachable. Found and fixed 16/07/2026. */
+    case 'messages': return state.role === 'insurer' ? renderInsurerClarifications() : renderMessages();
     case 'academy': return renderAcademy();
     case 'updates': return renderUpdates();
     case 'newprotocol': return renderNewProtocol();
@@ -3966,6 +3983,9 @@ function renderTasks(){
   </div>`;
 }
 function renderHome(){
+  /* The payer gets its own home: the generic one offers protocols to author and
+     tasks to complete, none of which belong to an insurer. Plan 11/07, Tier 1.1. */
+  if (state.role === 'insurer') return renderPayerHome();
   return renderHomeDash();
 }
 function renderHomeLegacy_unused(){
@@ -6668,10 +6688,140 @@ function renderInsurerCoverage(){
   </div>`;
 }
 function assuranceCurrency(days){ if (days <= 90) return {label:'In date', cls:'pill-success'}; if (days <= 180) return {label:'Review due', cls:'pill-warning'}; return {label:'Overdue review', cls:'pill-danger'}; }
+/* ---------- The payer evidence record (16/07/2026) ----------
+   James: "how do we record these decisions and asks: ask by ask, and how is that
+   evidence retained, downloaded, sent, accessed?"
+
+   Insurer Portal Plan 11/07, Tier 1 item 3: a persistent record of what was
+   viewed, asked and issued. Project Instructions v0.03 s.18: a governance-relevant
+   action must be reconstructable after the fact: WHAT changed, WHEN, ON WHOSE
+   AUTHORITY, AGAINST WHICH SOURCE, and what the previous state was. An action
+   that cannot be reconstructed did not happen for audit purposes.
+
+   So each entry is a structured object, not a log string: actor, class, action,
+   subject, the source guidance and version it was taken against, the passport
+   fingerprint, and the outcome. That is what makes it evidence rather than
+   history. Export is CSV (analysis) or a plain-text statement (a dispute pack).
+
+   HONEST LIMIT, stated on the surface rather than hidden: this prototype has no
+   backend, so the record lives for the session only and the export is generated
+   locally in the browser. Real retention, tamper-evidence, access control and
+   a legal retention period need the Phase 2 backend. The SHAPE is real; the
+   PERSISTENCE is not, and the surface says so rather than implying otherwise. */
+function insEvidence(){ return (state.insurerAssurance.evidence = state.insurerAssurance.evidence || []); }
+function insRecord(action, subject, detail, item){
+  const now = new Date();
+  insEvidence().unshift({
+    id: 'ev' + now.getTime().toString(36),
+    at: now.toISOString(),
+    when: now.toLocaleString('en-GB'),
+    actor: user().name,
+    org: user().trust,
+    cls: (INSURER_CLASSES[state.insurerClass] || INSURER_CLASSES.analyst).label,
+    action: action,
+    subject: subject,
+    source: item ? item.source : '',
+    version: item ? item.version : '',
+    passport: item ? item.passport : '',
+    detail: detail || ''
+  });
+}
+function insEvidenceCsv(){
+  const head = ['Timestamp (ISO)','Local time','Actor','Organisation','User class','Action','Subject','Source guidance','Version','Passport','Detail'];
+  const esc = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+  return [head.map(esc).join(',')].concat(insEvidence().map(e =>
+    [e.at, e.when, e.actor, e.org, e.cls, e.action, e.subject, e.source, e.version, e.passport, e.detail].map(esc).join(',')
+  )).join('\r\n');
+}
+function insEvidenceStatement(){
+  const e = insEvidence();
+  const L = [];
+  L.push('WECOLLATE PAYER EVIDENCE STATEMENT');
+  L.push('='.repeat(60));
+  L.push('Organisation: ' + user().trust);
+  L.push('Requested by: ' + user().name + ', ' + ((INSURER_CLASSES[state.insurerClass] || INSURER_CLASSES.analyst).label));
+  L.push('Generated: ' + new Date().toLocaleString('en-GB'));
+  L.push('Entries: ' + e.length);
+  L.push('');
+  L.push('PURPOSE');
+  L.push('A record of what this organisation viewed, asked and was issued on the');
+  L.push('WeCollate platform, so an assurance position can be reconstructed after');
+  L.push('the fact rather than asserted.');
+  L.push('');
+  L.push('SCOPE AND BOUNDARY');
+  L.push('This record contains no patient-identifiable data. It records actions on');
+  L.push('aggregate and governance material only. WeCollate structures and transports');
+  L.push('assurance; it is not the clinical decision-maker, and it is not the funder.');
+  L.push('');
+  L.push('ENTRIES');
+  L.push('-'.repeat(60));
+  if (!e.length) L.push('(No recorded activity in this session.)');
+  e.forEach((x, i) => {
+    L.push((i + 1) + '. ' + x.when + '  [' + x.action + ']');
+    L.push('   Subject: ' + x.subject);
+    if (x.source) L.push('   Taken against: ' + x.source + ' version ' + x.version);
+    if (x.passport) L.push('   Passport: ' + x.passport);
+    L.push('   By: ' + x.actor + ' (' + x.cls + '), ' + x.org);
+    if (x.detail) L.push('   Detail: ' + x.detail);
+    L.push('');
+  });
+  L.push('-'.repeat(60));
+  L.push('HONEST LIMIT OF THIS PROTOTYPE');
+  L.push('This is a design prototype with no backend. This record exists for the');
+  L.push('current browser session only and this file was generated locally on your');
+  L.push('own device: nothing was transmitted, and nothing is retained after the');
+  L.push('session ends. It is NOT a tamper-evident audit record and must not be');
+  L.push('relied upon in a real dispute. Durable retention, tamper-evidence, access');
+  L.push('control and an agreed retention period require the production backend.');
+  L.push('Illustrative data throughout; not clinically validated.');
+  return L.join('\n');
+}
+function renderPayerEvidence(){
+  const e = insEvidence();
+  const q = (state.insEvQ || '').trim().toLowerCase();
+  const shown = q ? e.filter(x => (x.action + ' ' + x.subject + ' ' + x.source + ' ' + x.detail).toLowerCase().includes(q)) : e;
+  return `
+  <div class="card">
+    <div class="row-between" style="align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <div style="min-width:0">
+        <div class="h3">Evidence record ${helpBtn('insurer.evidence')}</div>
+        <p class="text-caption text-muted mt-1">Every certificate viewed, re-check run and clarification raised, ask by ask: who did it, when, against which source guidance and version, and the passport it was taken against. This is what lets you reconstruct an assurance position later instead of asserting one.</p>
+      </div>
+      <span class="pill ${e.length ? 'pill-accent' : 'pill-neutral'}">${e.length} entr${e.length === 1 ? 'y' : 'ies'}</span>
+    </div>
+    ${e.length ? `
+    <div class="row mt-2" style="gap:6px;flex-wrap:wrap;align-items:center">
+      <input type="search" data-bind="insEvQ" value="${(state.insEvQ || '').replace(/"/g,'&quot;')}" placeholder="Search the record by action, regimen or source" aria-label="Search the evidence record" style="flex:1;min-width:220px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
+      <button type="button" class="btn btn-small" data-action="ins-ev-csv">Download CSV</button>
+      <button type="button" class="btn btn-small btn-primary" data-action="ins-ev-statement">Download evidence statement</button>
+    </div>
+    <p class="text-caption text-muted mt-1">${shown.length} of ${e.length} shown. The CSV is for your own analysis; the statement is a plain-language pack you could hand to a colleague or an auditor.</p>
+    <div class="card" style="padding:0;margin-top:var(--space-2)">
+      ${shown.map(x => `
+      <div class="control-row" style="grid-template-columns: 1.1fr 1.6fr 1.3fr;align-items:start">
+        <div><div class="text-caption" style="font-weight:600">${x.action}</div><div class="text-caption text-muted mt-1">${x.when}</div></div>
+        <div><div class="text-small">${x.subject}</div>${x.detail ? `<div class="text-caption text-muted mt-1">${x.detail}</div>` : ''}</div>
+        <div class="text-caption text-muted">${x.source ? x.source + ' &middot; ' + x.version + '<br>' : ''}${x.passport ? '<span class="mono">' + x.passport + '</span><br>' : ''}${x.actor} (${x.cls})</div>
+      </div>`).join('') || '<div class="control-row"><span class="text-small text-secondary">Nothing matches that search.</span></div>'}
+    </div>`
+    : '<p class="text-small text-secondary mt-2">Nothing recorded yet this session. Open a certificate, run a re-check or raise a clarification and it appears here.</p>'}
+    <div class="mt-3" style="padding:var(--space-3);background:var(--bg-warning);border-radius:var(--radius)">
+      <p class="text-caption" style="color:var(--text-warning)"><strong>Honest limit: this record is session-only.</strong> The prototype has no backend, so nothing here survives closing the browser, and a download is generated locally on your own device: nothing is transmitted anywhere. This is <strong>not</strong> a tamper-evident audit record and must not be relied on in a real dispute. Durable retention, tamper-evidence, access control and an agreed retention period are Phase 2 backend work. Access is by your own account only; there is no sharing mechanism here, because who may hold this evidence and for how long is a governance decision that has not been taken.</p>
+    </div>
+  </div>`;
+}
 function insAssuranceLog(msg){ (state.insurerAssurance.log = state.insurerAssurance.log || []).unshift({ when: new Date().toLocaleTimeString(), msg: msg }); }
 function renderInsurerClarifications(){
   const st = state.insurerClarif;
   const items = (st.items || INSURER_CLARIFICATIONS);
+  /* Class gate, fail closed: the analyst class has NO messaging channel at all,
+     structurally, so it must not reach this surface even by typing the route.
+     Asking a trust a question is a medical-officer capability. */
+  if (state.insurerClass !== 'medicalOfficer') return `
+  <div class="view stack">
+    <div class="h1">Clarifications ${helpBtn('insurer.clarifications')} ${flagStatusPill('messaging')}</div>
+    <div class="card" style="background:var(--bg-danger)"><p class="text-small" style="color:var(--text-danger)"><strong>Not available to this user class.</strong> Raising a clarification with a trust is a medical officer capability. As a ${(INSURER_CLASSES[state.insurerClass]||INSURER_CLASSES.analyst).label} you see aggregate assurance views only, and there is no messaging channel for this class at all: a structural boundary, not a permission that can be requested. Switch class in the top bar to see the medical officer view.</p></div>
+  </div>`;
   return `
   <div class="view stack">
     <div class="h1">Clarifications ${helpBtn('insurer.clarifications')} ${flagStatusPill('messaging')}</div>
@@ -6699,6 +6849,112 @@ function renderInsurerClarifications(){
           <div class="text-caption text-muted mt-1">Raised ${c.raised} &middot; Turnaround ${c.turnaround}${c.answer?' &middot; Answer: '+c.answer:''}</div>
         </div>`).join('')}</div>
     </div>
+  </div>`;
+}
+/* ---------- Payer dashboard: the insurer's home (16/07/2026) ----------
+   Insurer Portal Plan 11/07/2026, Tier 1 item 1: "A home tailored to the payer,
+   replacing the generic one". The insurer was landing on the clinician's home,
+   which offers protocols to author and tasks to complete: none of it is theirs.
+
+   The boundary, restated because this is the surface a payer sees first:
+   every figure is an aggregate built from the approved-set projection, small
+   cells (<5) are withheld through suppressStat, and no patient-identifiable data
+   exists anywhere in this role. Cost and uptake are ABSENT by design, not by
+   omission: the funding firewall means payer money must never influence clinical
+   content or ranking (v0.03 s.3), and tracking clinician uptake would be the
+   surveillance this platform exists not to do (s.1). A payer gets defensibility,
+   not leverage.
+
+   Every lane routes to the surface that owns the work. This is a cockpit, not a
+   second copy of the register. */
+function payerPosture(){
+  const items = ASSURANCE_ITEMS;
+  const total = items.length;
+  const verified = items.filter(i => i.verified).length;
+  const overdue = items.filter(i => i.reval > 180).length;
+  const dueSoon = items.filter(i => i.reval > 90 && i.reval <= 180).length;
+  const unverified = items.filter(i => !i.verified);
+  const alerts = (typeof PAYER_ALERTS !== 'undefined' ? PAYER_ALERTS : []);
+  const openClar = ((state.insurerClarif && state.insurerClarif.items) || INSURER_CLARIFICATIONS).filter(c => c.status === 'Open');
+  const highBudget = (typeof HORIZON_PAYER !== 'undefined' ? HORIZON_PAYER : []).filter(h => h.flag === 'high');
+  return { items, total, verified, overdue, dueSoon, unverified, alerts, openClar, highBudget,
+    verifiedPct: Math.round(verified / total * 100),
+    currencyPct: Math.round(items.filter(i => i.reval <= 90).length / total * 100) };
+}
+function payerAttention(p){
+  /* Ordered by consequence: what weakens your assurance position first. A count
+     is not an argument for attention, so each line says WHY it matters.
+
+     CLASS GATE: the clarification lines are medical-officer only. The analyst
+     class has NO messaging channel at all, structurally, so this lane must not
+     show a clarification nor offer a route to one. Gating the "where to go" row
+     alone was not enough: a dashboard that routes a class to a surface it cannot
+     lawfully reach is the same leak wearing a different hat. Fail closed: the
+     lines are not generated for the analyst, rather than generated and hidden. */
+  const isMO = state.insurerClass === 'medicalOfficer';
+  const out = [];
+  p.unverified.forEach(i => out.push({ tone: 'var(--text-warning,#b26a00)', title: i.title + ' is not independently verified',
+    why: 'You are funding this on the trust\'s word alone. Ask for verification before you rely on it in a dispute.', route: 'community' }));
+  p.items.filter(i => i.reval > 180).forEach(i => out.push({ tone: 'var(--text-danger,#c0392b)', title: i.title + ': revalidation overdue (' + i.reval + ' days)',
+    why: 'An out-of-date protocol is the weakest link in a defensibility chain. The trust owns the revalidation; you can ask.', route: 'community' }));
+  p.alerts.slice(0, 2).forEach(a => out.push({ tone: 'var(--text-accent,#157076)', title: a.text,
+    why: a.kind + ' on ' + a.when + '. ' + a.act + '.', route: 'payeranalytics' }));
+  if (isMO) p.openClar.forEach(c => out.push({ tone: 'var(--text-accent,#157076)', title: 'Awaiting a trust answer: ' + c.regimen,
+    why: 'Raised ' + c.raised + ', expected within ' + c.turnaround + '. Nothing is blocked on you.', route: 'messages' }));
+  return out;
+}
+function renderPayerHome(){
+  const p = payerPosture();
+  const cls = INSURER_CLASSES[state.insurerClass] || INSURER_CLASSES.analyst;
+  const att = payerAttention(p);
+  const tile = (num, label, tone, route, help) => `
+    <button type="button" class="stat-card" style="cursor:pointer;text-align:left;border:none" data-action="nav" data-route="${route}">
+      <div class="num"${tone ? ` style="color:${tone}"` : ''}>${num}</div>
+      <div class="text-small text-secondary mt-1">${label}</div>
+    </button>`;
+  return `
+  <div class="view stack">
+    <div class="h1">Payer dashboard ${helpBtn('insurer.payerHome')} ${flagStatusPill('insurerPortal')}</div>
+    <p class="text-secondary">Your assurance position at a glance: is every regimen you fund governed, current and evidence-based? Signed in as <strong>${user().name}, ${cls.label}</strong> at ${user().trust}. Every figure is an aggregate; any built from fewer than five records is withheld.</p>
+    <div class="stat-cards">
+      ${tile(p.total, 'approved regimens in view', null, 'find')}
+      ${tile(p.verifiedPct + '%', 'independently verified', p.verifiedPct >= 80 ? 'var(--text-success,#1e8e5a)' : 'var(--text-warning,#b26a00)', 'community')}
+      ${tile(p.currencyPct + '%', 'revalidation in date', p.currencyPct >= 80 ? 'var(--text-success,#1e8e5a)' : 'var(--text-warning,#b26a00)', 'community')}
+      ${tile(p.alerts.length, 'open change alerts', 'var(--text-warning,#b26a00)', 'payeranalytics')}
+      ${tile(p.highBudget.length, 'high budget-impact ahead', 'var(--text-warning,#b26a00)', 'coverage')}
+    </div>
+    <div class="card" style="border-left:3px solid var(--text-accent,#157076)">
+      <div class="h3">Collective assurance ${helpBtn('insurer.shield')}</div>
+      <p class="text-caption text-muted">Your confidence rests on verifiable fact and the weight of the network, not on a model opinion or on trust alone: drug identity checked against the dictionary, source guidance unchanged, references current, and how many trusts independently approved the identical version. Blind faith is not assurance; this is the evidence behind the position.</p>
+    </div>
+    <div class="card">
+      <div class="h3">What weakens your position ${helpBtn('insurer.payerHome')}</div>
+      <p class="text-caption text-muted mt-1">Ordered by consequence, not by count. ${att.length ? 'These are the things that would be hardest to defend today.' : 'Nothing is currently weakening your assurance position.'}</p>
+      <div class="mt-2">${att.map(a => `
+        <button type="button" class="attention-item" style="width:100%;text-align:left;cursor:pointer;border-left:3px solid ${a.tone}" data-action="nav" data-route="${a.route}">
+          <div style="min-width:0">
+            <span class="text-small" style="font-weight:600">${a.title}</span>
+            <div class="text-caption text-muted mt-1">${a.why}</div>
+          </div>
+        </button>`).join('')}</div>
+    </div>
+    <div class="card">
+      <div class="h3">Where to go ${helpBtn('nav.home')}</div>
+      <div class="row mt-2" style="gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn btn-small" data-action="nav" data-route="community">Assurance register and certificates</button>
+        <button type="button" class="btn btn-small" data-action="nav" data-route="coverage">Coverage and horizon</button>
+        <button type="button" class="btn btn-small" data-action="nav" data-route="payeranalytics">Payer analytics and change feed</button>
+        ${state.insurerClass === 'medicalOfficer'
+          ? '<button type="button" class="btn btn-small" data-action="nav" data-route="messages">Raise a governed clarification</button>'
+          : ''}
+      </div>
+      ${state.insurerClass !== 'medicalOfficer' ? `<p class="text-caption text-muted mt-2">Raising a clarification is a medical officer capability. As a ${cls.label} you see aggregate assurance views only, and there is no messaging channel for this class: a structural boundary, not a permission that can be requested.</p>` : ''}
+    </div>
+    <div class="card" style="background:var(--surface-1)">
+      <div class="h3">What this view deliberately does not carry ${helpBtn('insurer.boundary')}</div>
+      <p class="text-caption text-muted mt-1">No patient-identifiable data, ever. No clinician names, no drafts, no internal commentary, no workflow. No cost or price: cost may inform a decision but must never override or rank a clinical one, and the funding firewall keeps payer money from influencing clinical content. No uptake or prescribing-behaviour tracking: the measure of this platform is collaborative time saved, never clinicians observed. What you get instead is defensibility: governed, current, evidence-based, and provable.</p>
+    </div>
+    <p class="text-caption text-muted">Illustrative seed data throughout. In the live platform these figures come from SACT-aligned aggregates with small-cell suppression enforced server-side. WeCollate structures and transports assurance; the funding decision remains yours and the clinical decision remains the trust's.</p>
   </div>`;
 }
 function renderInsurerAssurance(){
@@ -6757,7 +7013,7 @@ function renderInsurerAssurance(){
       <div class="text-caption text-muted">Each approved regimen, its source guidance, version, revalidation currency, passport and network adoption. Open a certificate or run a re-check.</div>
       <div class="mt-2">${items.map(card).join('')}</div>
     </div>
-    ${(st.log && st.log.length) ? `<div class="card"><div class="h3">Assurance activity (this session)</div>${st.log.map(l=>`<div class="text-caption text-muted">${l.when}: ${l.msg}</div>`).join('')}</div>` : ''}
+    ${renderPayerEvidence()}
     ${state.insurerClass === 'medicalOfficer' ? `
     <div class="card">
       <div class="h3">Raise a clarification ${helpBtn('insurer.clarification')}</div>
@@ -11312,10 +11568,36 @@ function initEvents(){
     else if (action === 'sec-reset') { const id = btn.getAttribute('data-id'); if (state.sectionDrafts && state.sectionDrafts[id]) state.sectionDrafts[id].lines = (state.sectionDrafts[id].orig || []).slice(); renderAll(); }
     else if (action === 'sec-save') { const id = btn.getAttribute('data-id'); state.sectionSaved = state.sectionSaved || {}; state.sectionSaved[id] = true; state.sectionEdit = null; if (typeof actionAddTask === 'function') actionAddTask('Section draft saved: take the change through sign-off before it reaches the library'); renderAll(); }
     else if (action === 'ac-cpd-download') { state.academy.dl = true; renderAll(); }
-    else if (action === 'ins-cert-open') { const id = btn.getAttribute('data-id'); state.insurerAssurance.open = state.insurerAssurance.open === id ? null : id; if (state.insurerAssurance.open) { const i = ASSURANCE_ITEMS.find(x=>x.id===id); insAssuranceLog('Viewed assurance certificate: ' + (i?i.title:id)); } renderAll(); }
-    else if (action === 'ins-cert-download') { const i = ASSURANCE_ITEMS.find(x=>x.id===btn.getAttribute('data-id')); insAssuranceLog('Downloaded assurance certificate' + (i?': '+i.title:'') + ' (session only in this prototype)'); renderAll(); }
-    else if (action === 'ins-recheck') { const i = ASSURANCE_ITEMS.find(x=>x.id===btn.getAttribute('data-id')); if (i) { (state.insurerAssurance.recheck = state.insurerAssurance.recheck||{})[i.id] = { msg: i.verified ? (i.reval<=180 ? 'integrity intact, current version, no new safety signal.' : 'integrity intact but revalidation is overdue; ask the trust to revalidate.') : 'integrity intact, but this regimen is not independently verified; treat with caution.' }; insAssuranceLog('Ran a passport re-check: ' + i.title); } renderAll(); }
-    else if (action === 'ins-clar-send') { const st = state.insurerClarif; if (!st.pv) { renderAll(); return; } if (/\d{10}/.test((st.text||'').replace(/\s/g,''))) { st.blocked = true; renderAll(); return; } st.blocked = false; if ((st.text||'').trim()) { const reg = ASSURANCE_ITEMS.find(x=>x.id===st.regimen); if (!st.items) st.items = INSURER_CLARIFICATIONS.slice(); st.items.unshift({ id: 'icm'+Date.now().toString(36), regimen: reg?reg.title:'Approved protocol', question: st.text.trim(), status: 'Open', raised: new Date().toISOString().slice(0,10), turnaround: '5 working days', answer: '' }); st.text=''; st.pv=false; } renderAll(); }
+    else if (action === 'ins-cert-open') { const id = btn.getAttribute('data-id'); state.insurerAssurance.open = state.insurerAssurance.open === id ? null : id; if (state.insurerAssurance.open) { const i = ASSURANCE_ITEMS.find(x=>x.id===id); insAssuranceLog('Viewed assurance certificate: ' + (i?i.title:id)); insRecord('Certificate viewed', i?i.title:id, '', i); } renderAll(); }
+    else if (action === 'ins-cert-download') {
+      const i = ASSURANCE_ITEMS.find(x=>x.id===btn.getAttribute('data-id'));
+      insAssuranceLog('Downloaded assurance certificate' + (i?': '+i.title:'') + ' (session only in this prototype)');
+      insRecord('Certificate issued', i?i.title:'(unknown regimen)', 'Downloaded to the requester\'s own device; not transmitted.', i);
+      if (i) {
+        const cur = assuranceCurrency(i.reval);
+        const txt = ['WECOLLATE ASSURANCE CERTIFICATE','='.repeat(60),
+          'Regimen: ' + i.title, 'Indication: ' + i.indication,
+          'Source guidance: ' + i.source, 'Version: ' + i.version, 'Passport: ' + i.passport,
+          'Independently verified: ' + (i.verified ? 'Yes' : 'NOT currently verified'),
+          'Revalidation: ' + i.reval + ' days ago (' + cur.label + ')',
+          'Network adoption: ' + (i.trustsApproved < 5 ? 'withheld (small-cell suppression)' : i.trustsApproved + ' of ' + i.trustsTotal + ' trusts approved this identical version'),
+          '', 'Issued to: ' + user().name + ', ' + ((INSURER_CLASSES[state.insurerClass]||INSURER_CLASSES.analyst).label) + ', ' + user().trust,
+          'Issued: ' + new Date().toLocaleString('en-GB'),
+          '', 'BOUNDARY', 'No patient-identifiable data. Aggregate and governance material only.',
+          'WeCollate structures and transports assurance; it is not the clinical',
+          'decision-maker and it is not the funder. The clinical decision remains',
+          'the trust\'s; the funding decision remains yours.',
+          '', 'HONEST LIMIT', 'Design prototype, illustrative data, not clinically validated. Generated',
+          'locally in your browser and not transmitted. Not a tamper-evident record;',
+          'do not rely on it in a real dispute.'].join('\n');
+        downloadFile('WeCollate_assurance_certificate_' + i.passport + '.txt', txt, 'text/plain');
+      }
+      renderAll();
+    }
+    else if (action === 'ins-recheck') { const i = ASSURANCE_ITEMS.find(x=>x.id===btn.getAttribute('data-id')); if (i) { const msg = i.verified ? (i.reval<=180 ? 'integrity intact, current version, no new safety signal.' : 'integrity intact but revalidation is overdue; ask the trust to revalidate.') : 'integrity intact, but this regimen is not independently verified; treat with caution.'; (state.insurerAssurance.recheck = state.insurerAssurance.recheck||{})[i.id] = { msg: msg }; insAssuranceLog('Ran a passport re-check: ' + i.title); insRecord('Passport re-check', i.title, 'Result: ' + msg, i); } renderAll(); }
+    else if (action === 'ins-ev-csv') { insRecord('Evidence record exported', 'Full evidence record (CSV)', insEvidence().length + ' entries at export.', null); downloadFile('WeCollate_payer_evidence_' + new Date().toISOString().slice(0,10) + '.csv', insEvidenceCsv(), 'text/csv'); renderAll(); }
+    else if (action === 'ins-ev-statement') { insRecord('Evidence statement issued', 'Payer evidence statement', insEvidence().length + ' entries at issue.', null); downloadFile('WeCollate_payer_evidence_statement_' + new Date().toISOString().slice(0,10) + '.txt', insEvidenceStatement(), 'text/plain'); renderAll(); }
+    else if (action === 'ins-clar-send') { const st = state.insurerClarif; if (!st.pv) { renderAll(); return; } if (/\d{10}/.test((st.text||'').replace(/\s/g,''))) { st.blocked = true; renderAll(); return; } st.blocked = false; if ((st.text||'').trim()) { const reg = ASSURANCE_ITEMS.find(x=>x.id===st.regimen); if (!st.items) st.items = INSURER_CLARIFICATIONS.slice(); st.items.unshift({ id: 'icm'+Date.now().toString(36), regimen: reg?reg.title:'Approved protocol', question: st.text.trim(), status: 'Open', raised: new Date().toISOString().slice(0,10), turnaround: '5 working days', answer: '' }); insRecord('Clarification raised', reg?reg.title:'Approved protocol', 'Asked: "' + st.text.trim().slice(0,120) + '" Pharmacovigilance acknowledgement given; no-patient-identifier check passed. Turnaround 5 working days.', reg); st.text=''; st.pv=false; } renderAll(); }
     else if (action === 'msg-filter') { state.msgFilter = btn.getAttribute('data-val'); renderAll(); }
     else if (action === 'msg-save') { const md = msgMeta(btn.getAttribute('data-id')); md.saved = !md.saved; renderAll(); }
     else if (action === 'msg-followup-clear') { msgMeta(btn.getAttribute('data-id')).followUp = ''; renderAll(); }
@@ -11695,6 +11977,7 @@ function initEvents(){
     else if (bind === 'hzModality') { state.hzDraft.modality = el.value; }
     else if (bind === 'hzChair') { state.hzDraft.chair = el.value; }
     else if (bind === 'hzPharmacy') { state.hzDraft.pharmacy = el.value; }
+    else if (bind === 'insEvQ') { state.insEvQ = el.value; renderAll(); focusEl('input[data-bind="insEvQ"]'); }
     else if (bind === 'eoiQ') { state.eoiQ = el.value; renderAll(); focusEl('input[data-bind="eoiQ"]'); }
     else if (bind === 'eoiDeclineReason') { state.eoiDeclineReason = el.value; renderAll(); focusEl('input[data-bind="eoiDeclineReason"]'); }
     else if (bind === 'noteText') { const n = (state.notes || []).find(x => x.id === el.getAttribute('data-id')); if (n) { n.text = el.value; persistPrefs(); } }
