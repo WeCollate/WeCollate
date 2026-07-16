@@ -2556,7 +2556,17 @@ const state = {
   horizonRegion: 'bsol', horizonOnePager: null,
   pharmaClass: 'msl',        // msl | medinfo | sales | marketing | regulatory
   insurerClass: 'analyst',   // analyst | medicalOfficer
-  pharmaCompanyId: 'co_illustrative',
+  /* Default pharma company: MSD, not co_illustrative (changed 16/07/2026).
+     co_illustrative sells "Illustrative oncology agent", which appears in NO
+     protocol in the corpus, so every portfolio-aware surface correctly reported
+     "nothing to act on" and the default demo showed the weakest possible version
+     of the pharma portal: the formulary portfolio card, the document portfolio
+     panel and the SmPC route all rendered empty for the account a demo starts on.
+     The code was right; the seed choice was wrong. MSD holds pembrolizumab, which
+     is one of the two fully worked protocols, so the portal now demonstrates
+     itself. Same class of defect as the Archived lens shipping empty: a
+     capability nobody can see is not a capability. */
+  pharmaCompanyId: 'co_msd',
   cqTokens: {},              // clinician-issued query tokens per thread (ABPI reactive gating)
   padDrug: { name: '', groups: '', nice: 'NICE approved indications in use', services: '' }, // portfolio add/edit draft
   padEditIdx: null,          // index of drug being edited in the portfolio, or null for add
