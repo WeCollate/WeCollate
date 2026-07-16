@@ -1,0 +1,81 @@
+# =============================================================================
+# WeCollate publishing repo: PUBLIC. Guard what leaves the boundary.
+# =============================================================================
+# This repo exists to publish ONE file to GitHub Pages:
+#   WeCollate_Version_1.1.0_Prototype.html  (+ index.html)
+#
+# The working directory may contain a full copy of the project folder. Almost
+# none of it belongs on a public site. In particular Protocol_Library holds the
+# REAL Clatterbridge NHS reference corpus. Publishing that is an information-
+# governance decision for a human with sign-off, never a side effect of a
+# `git add .`. On 16/07/2026 GitHub Desktop was found with 987 files staged and
+# ready to commit; this file exists so that cannot happen again.
+#
+# Master source of truth is the TRUNK, which is NOT this folder:
+#   C:\Users\james\Claude\Projects\WeCollate_V2_Release_1.0.0
+# Publish with: publish_to_pages.ps1 (in the trunk). Do not hand-copy.
+# =============================================================================
+
+# --- Clinical corpus and source documents: never publish ---
+Protocol_Library/
+**/Protocol_Library/
+*.pdf
+WMCA - Cancer Alliance Docs and Research/
+WeCollate - WMCA/
+Additional files/
+
+# --- Working documents, specs and business material ---
+*.docx
+*.xlsx
+*.pptx
+*.md
+!README.md
+.~lock.*#
+
+# --- Duplicate/nested project copies (the cause of the stale publish) ---
+WeCollate_V2_Release_1.0.0/
+WeCollate Archive/
+WeCollate V2 zipped */
+WeCollate - re build files/
+_Roadmap_Modular_Services/
+backend/
+compliance/
+business/
+data_tools/
+source_registry/
+protocol_normalisation/
+phase0_verification/
+reports/
+
+# --- Images and screenshots ---
+*.png
+*.jpeg
+*.jpg
+WeCollate Images/
+Images and Logo/
+
+# --- Other prototype HTML: only the published one is tracked ---
+WeCollate_Version_1.0.0_Prototype.html
+WeCollate_Version_1.0.1_Prototype.html
+WeCollate_App_V1.html
+WeCollate_Clinician.html
+WeCollate_Insurer.html
+WeCollate_Pharma.html
+WeCollate_Protocol_*.html
+WeCollate_V2_Demo.html
+WeCollate_Truth_Board.html
+WeCollate_Standards_Check.html
+WeCollate_Start_Here.html
+WeCollate_Coverage_Action_View.html
+WeCollate_Duplicate_Clusters.html
+WeCollate_Horizon_GoLive_Deck.html
+admin_audit.html
+app.html
+
+# --- Scratch ---
+*.json
+*.sh
+*.ps1
+*.py
+*.log
+node_modules/
