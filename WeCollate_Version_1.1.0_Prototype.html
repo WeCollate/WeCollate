@@ -863,6 +863,9 @@ const HELP_CONTENT = {
   'policies.edit': { what: 'Author and edit the policy: its title, version, live point of contact, and the content of each section.', why: 'A policy library is only useful if the content lives here and can be kept current, not just a list of section headings.', best: 'Write each section, reorder or add sections as needed, set a live point of contact, then Save. Saving is session-only in the prototype and the full governance and approval path still applies before a policy is issued.' },
   'revalidate.groupList': { what: 'A shared task list for your whole trust team, not just you.', why: 'Revalidation findings often need whoever is free, not the one person who ran the check; a shared list means nothing waits on an individual.', best: 'Forward a finding here when anyone on the team could action it; add it to your own to-do when it is specifically yours. Session only in the prototype.' },
   'messages.dashboard': { what: 'A glance at everything waiting in your inbox, with Community folded in.', why: 'Community requests, exchanges and to-dos are really just messages, so they belong in one place rather than a separate menu.', best: 'Click a tile to filter the list (new, awaiting your action, follow-ups due) or to open a Community area (exchange requests, policy requests, to-dos).' },
+  'insurer.adoption': { what: 'How many hospitals use this exact version, how long the medicine has been established, where it sits against a biosimilar, and a confidence band with the arithmetic shown.', why: 'These are facts about a MEDICINE, not observations of clinicians: how many trusts independently reached the same conclusion is the strongest assurance signal there is, and it costs nobody their privacy. Confidence is arithmetic on three things you can see on the same card (verified, in date, adopted), never a score from a model: you can check it yourself and disagree with it.', best: 'Read the arithmetic, not just the band. A "Low" band on a rare-indication protocol usually means too few trusts to report rather than anything wrong. Counts below five trusts are withheld under small-cell suppression, so a rare regimen shows "withheld" rather than a number that could identify the trust.', source: 'James, 16/07/2026: how many hospitals are using this, biosimilar position, when it launched. NOTE: there is deliberately NO regional or postcode breakdown. Regional usage plus insurer pricing is postcode-rated cover, which would breach section 3 and invert the platform: it is escalated as an A5 commercial-model and IG question, not built.' },
+  'insurer.position': { what: 'Your organisation\'s funding position on this regimen: accept, do not fund, or ask the trust. A reason is required on every position, including accept.', why: 'The platform recorded what you looked at but never what you concluded, so the evidence could show diligence but not a decision. A decision without a stated reason is a click, not evidence. The position is stamped with the version and passport it was taken against, so when the trust revalidates, the old position shows as superseded instead of silently carrying onto a document that has changed.', best: 'This is a FUNDING position, not a clinical judgement, and it is not sent to the trust. "Do not fund" means "we will not fund this on the current evidence", never "this protocol is wrong": the clinical decision remains the trust\'s. If you need more before you can decide, use "Ask the trust" and raise a governed clarification.', source: 'James, 16/07/2026: "actionable accept/reject/ask?" Project Instructions v0.03 section 18 (reconstructable decisions) and section 4 (the AI and the platform are not the clinical decision-maker).' },
+  'insurer.thread': { what: 'Everything recorded about one regimen: every certificate, re-check, question and funding position, newest first.', why: 'A flat list answers "what did we do today". This answers "what have we asked about this drug, and what did we conclude", which is the question you actually get asked six months later in a dispute.', best: 'Read it before taking or changing a position: it shows whether you already asked, what came back, and what you decided against which version.', source: 'James, 16/07/2026: track the asks against a drug or a protocol. Built on the existing evidence record; session-only, same honest limit.' },
   'insurer.evidence': { what: 'A structured record of every certificate you viewed, re-check you ran, clarification you raised and export you took: ask by ask, with the source guidance, version and passport it was taken against.', why: 'Project Instructions section 18: a governance-relevant action must be reconstructable after the fact, or for audit purposes it did not happen. An assurance position you cannot evidence is an assertion. This is what turns "we checked" into something a colleague, an auditor or a dispute can actually examine.', best: 'Export the CSV for your own analysis, or the evidence statement as a plain-language pack. Both are generated locally on your device and nothing is transmitted. READ THE HONEST LIMIT: this prototype has no backend, the record is session-only, it is not tamper-evident, and it must not be relied on in a real dispute. Who may hold this evidence, for how long, and how it is shared are governance decisions that have not been taken yet.', source: 'WeCollate Insurer Portal Plan 11/07/2026, Tier 1 item 3; Project Instructions v0.03 section 18. Built 16/07/2026 on James\'s question: how are these decisions and asks recorded, retained, downloaded, sent and accessed.' },
   'insurer.payerHome': { what: 'The payer home: your assurance position at a glance, and the things that would be hardest to defend today.', why: 'An insurer was landing on the clinician home, which offers protocols to author and tasks to complete: none of it theirs. This answers the only question a payer actually has: can I defend what I am funding? The attention lane is ordered by consequence, not by count, because a big number is not the same as a weak position.', best: 'Work the "what weakens your position" lane top down: an unverified regimen and an overdue revalidation are the two things that break a defensibility chain. Every line routes to the surface that owns it; nothing is actioned here.', source: 'WeCollate Insurer Portal Plan, 11/07/2026, Tier 1 item 1. Built 16/07/2026. Illustrative seed data.' },
   'insurer.boundary': { what: 'What the payer view deliberately does not carry: patient data, cost, and uptake tracking.', why: 'These absences are design decisions, not gaps. Cost may inform a decision but must never override or rank a clinical one, and the funding firewall stops payer money influencing clinical content (Project Instructions section 3). Tracking clinician uptake would be surveillance, and the measure of this platform is collaborative time saved, never clinicians observed (section 1). No patient-identifiable data reaches this role at all.', best: 'If a payer asks for cost per regimen or prescribing-behaviour data, that is a commercial-model and information-governance decision for the Product Owners (open point A5), not a feature request. Escalate it; do not build it.', source: 'Project Instructions v0.03 sections 1 and 3; Insurer Portal Plan 11/07/2026 section 3, "the boundary that shapes every feature".' },
@@ -6720,11 +6723,119 @@ function insRecord(action, subject, detail, item){
     cls: (INSURER_CLASSES[state.insurerClass] || INSURER_CLASSES.analyst).label,
     action: action,
     subject: subject,
+    /* subjectId threads the record: every entry about the same regimen groups
+       together, so "what have we asked about this drug, and what did we conclude"
+       has an answer. Entries with no regimen (exports) thread under '_general'. */
+    subjectId: item ? item.id : '_general',
     source: item ? item.source : '',
     version: item ? item.version : '',
     passport: item ? item.passport : '',
     detail: detail || ''
   });
+}
+/* ---------- Per-subject decision: accept, reject, ask again (16/07/2026) ----------
+   James: "actionable accept/reject/ask?" A payer looks at a regimen and reaches a
+   position on it. Until now the platform recorded what they LOOKED AT but never
+   what they CONCLUDED, so the evidence record could show diligence but not a
+   decision. Section 18 wants the decision reconstructable: what was decided, by
+   whom, against which version and passport, and on what stated reason.
+
+   A reason is REQUIRED on every position, including accept. A decision without a
+   reason is not evidence, it is a click. The position is recorded against the
+   VERSION and PASSPORT current at the time: if the trust revalidates to a new
+   version afterwards, the old position does not silently carry over, because it
+   was taken against a document that no longer exists.
+
+   This is the payer's own funding position. It is NOT a clinical decision and it
+   does not reach the trust: WeCollate structures and transports assurance; the
+   clinical decision remains the trust's. Recording "reject" here means "we will
+   not fund this on the current evidence", never "this protocol is wrong". */
+const PAYER_POSITIONS = [
+  ['accept', 'Accept', 'pill-success', 'We are content to fund this on the current evidence.'],
+  ['reject', 'Do not fund', 'pill-danger', 'We will not fund this on the current evidence. This is a funding position, not a clinical judgement.'],
+  ['ask', 'Ask the trust', 'pill-warning', 'We need a governed clarification before we can take a position.']
+];
+function insPositions(){ return (state.insurerAssurance.positions = state.insurerAssurance.positions || {}); }
+function insPositionFor(item){
+  const p = insPositions()[item.id];
+  if (!p) return null;
+  /* A position taken against a superseded version is shown as STALE rather than
+     carried forward: it was a decision about a document that has since changed. */
+  p.stale = (p.version !== item.version);
+  return p;
+}
+function insSubjectThread(item){
+  return insEvidence().filter(e => e.subjectId === item.id);
+}
+/* ---------- Adoption and confidence signals (16/07/2026) ----------
+   James: "insurers could need to know how many hospitals are using this, or a
+   biosimilar, or when it was launched."
+
+   These are facts about a MEDICINE, not observations of clinicians, which is what
+   makes them lawful here: how many trusts independently approved the identical
+   version, how long it has been established, and where it sits against a
+   biosimilar. Section 1's purpose test is not breached because nothing here
+   watches an individual or a service; the unit is the protocol.
+
+   DELIBERATELY NOT BUILT: any REGIONAL cut of this data. James raised a
+   "postcode policy for insurers on risk" as a future concept. Regional usage plus
+   insurer pricing is postcode-rated cancer cover: a patient pays more, or is
+   covered less, because their local trust treats more cancer. That inverts the
+   platform (trusts contribute protocols to help each other, and the contribution
+   becomes the instrument that prices their own patients), breaches section 3 (a
+   commercial interest must never influence what a clinician is shown, and cost
+   must never rank a clinical decision), and carries FCA fair-value and Equality
+   Act indirect-discrimination exposure that no engineer should determine alone.
+   Section 9: where the regime is unclear, stop and escalate. Escalated as an A5
+   commercial-model and information-governance question. Do not add a region
+   filter here without that decision.
+
+   Confidence is COLLECTIVE ASSURANCE, never a model opinion: it is arithmetic on
+   adoption, verification and currency, and the surface shows the arithmetic. */
+const ADOPTION_META = {
+  ai1: { established: 'In NHS use since 2022', biosimilar: 'Originator only; no biosimilar on the UK market', switch: '' },
+  ai2: { established: 'In NHS use since 2023', biosimilar: 'Originator only; patent-protected', switch: '' },
+  ai3: { established: 'In NHS use since 2007', biosimilar: 'Biosimilars available and widely adopted', switch: 'Most trusts have switched to a biosimilar; the protocol is written to be product-agnostic.' },
+  ai4: { established: 'In NHS use since 2006', biosimilar: 'Biosimilars available and widely adopted', switch: 'Biosimilar switching is established practice; the maintenance schedule is unchanged by the switch.' },
+  ai5: { established: 'Local framework, recent', biosimilar: 'Not applicable', switch: '' },
+  ai6: { established: 'In NHS use since 2024 (managed access)', biosimilar: 'Originator only; new molecular entity', switch: '' }
+};
+function insConfidence(i){
+  /* Arithmetic, shown openly, not a score from a model. Three inputs, each of
+     which the payer can see and check on the same card. */
+  const adoptionRate = i.trustsTotal ? (i.trustsApproved / i.trustsTotal) : 0;
+  const parts = [];
+  let n = 0;
+  if (i.verified) { n += 40; parts.push('independently verified (+40)'); }
+  else parts.push('not independently verified (+0)');
+  if (i.reval <= 90) { n += 30; parts.push('revalidation in date (+30)'); }
+  else if (i.reval <= 180) { n += 15; parts.push('revalidation due (+15)'); }
+  else parts.push('revalidation overdue (+0)');
+  if (adoptionRate >= 0.8) { n += 30; parts.push('adopted by most of the network (+30)'); }
+  else if (adoptionRate >= 0.5) { n += 20; parts.push('adopted by over half the network (+20)'); }
+  else if (i.trustsApproved >= 5) { n += 10; parts.push('limited network adoption (+10)'); }
+  else parts.push('adoption withheld: too few trusts to report (+0)');
+  const band = n >= 80 ? ['High', 'pill-success'] : (n >= 50 ? ['Moderate', 'pill-warning'] : ['Low', 'pill-danger']);
+  return { n: n, band: band[0], cls: band[1], parts: parts };
+}
+function insAdoptionPanel(i){
+  const m = ADOPTION_META[i.id] || { established: 'Not stated', biosimilar: 'Not stated', switch: '' };
+  const c = insConfidence(i);
+  const small = i.trustsApproved < 5;
+  return `
+  <div class="mt-2" style="padding:var(--space-3);background:var(--surface-1);border-radius:var(--radius)">
+    <div class="row-between" style="align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <div style="min-width:0">
+        <div class="text-caption" style="font-weight:600">Adoption and confidence ${helpBtn('insurer.adoption')}</div>
+        <div class="text-caption text-muted mt-1">Hospitals using this version: <strong>${small ? 'withheld (fewer than five trusts, small-cell suppression)' : i.trustsApproved + ' of ' + i.trustsTotal + ' trusts (' + Math.round(i.trustsApproved / i.trustsTotal * 100) + '%)'}</strong></div>
+        <div class="text-caption text-muted">${m.established} &middot; ${m.biosimilar}</div>
+        ${m.switch ? `<div class="text-caption text-muted">${m.switch}</div>` : ''}
+      </div>
+      <div><span class="pill ${c.cls}">${c.band} confidence</span></div>
+    </div>
+    <div class="text-caption text-muted mt-2">How that confidence is reached, in full: ${c.parts.join('; ')}. Total ${c.n} of 100.</div>
+    <div class="text-caption text-muted mt-1">Arithmetic on facts you can see on this card, never a model opinion: this is the weight of the network, not a judgement about anyone's practice. Figures are about the medicine and the protocol; no clinician or service is observed, and no regional breakdown exists.</div>
+  </div>`;
 }
 function insEvidenceCsv(){
   const head = ['Timestamp (ISO)','Local time','Actor','Organisation','User class','Action','Subject','Source guidance','Version','Passport','Detail'];
@@ -6775,6 +6886,55 @@ function insEvidenceStatement(){
   L.push('control and an agreed retention period require the production backend.');
   L.push('Illustrative data throughout; not clinically validated.');
   return L.join('\n');
+}
+function insPositionPanel(i){
+  const st = state.insurerAssurance;
+  const pos = insPositionFor(i);
+  const open = st.posOpen === i.id;
+  const canDecide = state.insurerClass === 'medicalOfficer';
+  const meta = pos ? PAYER_POSITIONS.find(p => p[0] === pos.kind) : null;
+  return `
+  <div class="mt-2" style="padding:var(--space-3);background:var(--surface-1);border-radius:var(--radius)">
+    <div class="row-between" style="align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <div style="min-width:0">
+        <div class="text-caption" style="font-weight:600">Your funding position ${helpBtn('insurer.position')}</div>
+        ${pos
+          ? `<div class="text-caption text-muted mt-1">${pos.reason}</div>
+             <div class="text-caption text-muted mt-1">Taken ${pos.when} by ${pos.by} (${pos.cls}) against ${pos.source} ${pos.version}, passport ${pos.passport}.</div>
+             ${pos.stale ? `<div class="text-caption mt-1" style="color:var(--text-warning)"><strong>Superseded:</strong> this position was taken against version ${pos.version}; the regimen is now ${i.version}. It does not carry over. Review and take a fresh position.</div>` : ''}`
+          : '<div class="text-caption text-muted mt-1">No position recorded. The platform can show you the evidence; the funding decision is yours, and recording it is what makes it defensible later.</div>'}
+      </div>
+      <div>${meta ? `<span class="pill ${pos.stale ? 'pill-warning' : meta[2]}">${meta[1]}${pos.stale ? ' (superseded)' : ''}</span>` : '<span class="pill pill-neutral">No position</span>'}</div>
+    </div>
+    ${canDecide ? `
+    ${open ? `
+    <div class="mt-2">
+      <div class="text-caption text-muted">A reason is required on every position, including accept. A decision without a stated reason is not evidence.</div>
+      <input type="text" data-bind="insPosReason" value="${(st.posReason || '').replace(/"/g,'&quot;')}" placeholder="Why are you taking this position?" style="width:100%;margin-top:6px;padding:6px 8px;border:1px solid var(--border);border-radius:6px">
+      <div class="row mt-2" style="gap:6px;flex-wrap:wrap">
+        ${PAYER_POSITIONS.map(([k, label, cls, desc]) => `<button type="button" class="btn btn-small ${k === 'accept' ? 'btn-primary' : ''}" data-action="ins-pos-set" data-id="${i.id}" data-kind="${k}" title="${desc}" ${(st.posReason || '').trim() ? '' : 'disabled'}>${label}</button>`).join('')}
+        <button type="button" class="btn btn-small btn-ghost" data-action="ins-pos-cancel">Cancel</button>
+      </div>
+      ${(st.posReason || '').trim() ? '' : '<p class="text-caption text-muted mt-1">Write the reason first.</p>'}
+    </div>`
+    : `<button type="button" class="btn btn-small mt-2" data-action="ins-pos-open" data-id="${i.id}">${pos ? 'Change the position' : 'Record a position'}</button>`}`
+    : `<p class="text-caption text-muted mt-2">Recording a funding position is a medical officer capability. As a ${(INSURER_CLASSES[state.insurerClass]||INSURER_CLASSES.analyst).label} you see the evidence and the recorded position, but do not set it.</p>`}
+  </div>`;
+}
+function insThreadPanel(i){
+  const t = insSubjectThread(i);
+  return `
+  <div class="mt-2" style="padding:var(--space-3);background:var(--bg-accent,#e0f2f0);border-radius:var(--radius)">
+    <div class="text-caption" style="font-weight:600">Everything about this regimen ${helpBtn('insurer.thread')}</div>
+    <div class="text-caption text-muted">Every certificate, re-check, question and position on this one regimen, newest first. This is the answer to "what have we asked about this, and what did we conclude".</div>
+    ${t.length ? `<div class="mt-2">${t.map(e => `
+      <div class="attention-item" style="display:block">
+        <div class="text-caption" style="font-weight:600">${e.action} <span class="text-muted" style="font-weight:400">&middot; ${e.when}</span></div>
+        ${e.detail ? `<div class="text-caption text-muted mt-1">${e.detail}</div>` : ''}
+        <div class="text-caption text-muted mt-1">${e.actor} (${e.cls})${e.version ? ' &middot; against ' + e.source + ' ' + e.version : ''}</div>
+      </div>`).join('')}</div>`
+      : '<p class="text-caption text-muted mt-2">Nothing recorded about this regimen yet this session.</p>'}
+  </div>`;
 }
 function renderPayerEvidence(){
   const e = insEvidence();
@@ -6989,8 +7149,12 @@ function renderInsurerAssurance(){
       <div class="row mt-2" style="gap:6px;flex-wrap:wrap">
         <button type="button" class="btn btn-small" data-action="ins-cert-open" data-id="${i.id}">${st.open===i.id?'Hide certificate':'Assurance certificate'}</button>
         <button type="button" class="btn btn-small" data-action="ins-recheck" data-id="${i.id}">Re-check</button>
+        <button type="button" class="btn btn-small" data-action="ins-thread" data-id="${i.id}">${st.thread===i.id?'Hide history':'History (' + insSubjectThread(i).length + ')'}</button>
       </div>
       ${rc ? `<div class="text-caption text-accent mt-1">Re-check: ${rc.msg}</div>` : ''}
+      ${insAdoptionPanel(i)}
+      ${insPositionPanel(i)}
+      ${st.thread===i.id ? insThreadPanel(i) : ''}
       ${st.open===i.id ? cert(i) : ''}
     </div>`; };
   return `
@@ -11595,6 +11759,31 @@ function initEvents(){
       renderAll();
     }
     else if (action === 'ins-recheck') { const i = ASSURANCE_ITEMS.find(x=>x.id===btn.getAttribute('data-id')); if (i) { const msg = i.verified ? (i.reval<=180 ? 'integrity intact, current version, no new safety signal.' : 'integrity intact but revalidation is overdue; ask the trust to revalidate.') : 'integrity intact, but this regimen is not independently verified; treat with caution.'; (state.insurerAssurance.recheck = state.insurerAssurance.recheck||{})[i.id] = { msg: msg }; insAssuranceLog('Ran a passport re-check: ' + i.title); insRecord('Passport re-check', i.title, 'Result: ' + msg, i); } renderAll(); }
+    else if (action === 'ins-thread') { const id = btn.getAttribute('data-id'); state.insurerAssurance.thread = state.insurerAssurance.thread === id ? null : id; renderAll(); }
+    else if (action === 'ins-pos-open') { state.insurerAssurance.posOpen = btn.getAttribute('data-id'); state.insurerAssurance.posReason = ''; renderAll(); }
+    else if (action === 'ins-pos-cancel') { state.insurerAssurance.posOpen = null; state.insurerAssurance.posReason = ''; renderAll(); }
+    else if (action === 'ins-pos-set') {
+      /* Fail closed: only a medical officer sets a funding position, and only with
+         a stated reason. The position is stamped with the version and passport it
+         was taken against, so a later revalidation shows it as superseded rather
+         than silently carrying an old decision onto a new document. */
+      if (state.insurerClass !== 'medicalOfficer') { renderAll(); return; }
+      const reason = (state.insurerAssurance.posReason || '').trim();
+      if (!reason) { renderAll(); return; }
+      const i = ASSURANCE_ITEMS.find(x => x.id === btn.getAttribute('data-id'));
+      const kind = btn.getAttribute('data-kind');
+      if (i) {
+        const meta = PAYER_POSITIONS.find(p => p[0] === kind);
+        insPositions()[i.id] = { kind: kind, reason: reason, when: new Date().toLocaleString('en-GB'),
+          by: user().name, cls: (INSURER_CLASSES[state.insurerClass] || INSURER_CLASSES.analyst).label,
+          source: i.source, version: i.version, passport: i.passport };
+        insRecord('Funding position: ' + (meta ? meta[1] : kind), i.title, 'Reason: ' + reason + ' (A funding position only; not a clinical judgement and not sent to the trust.)', i);
+        insAssuranceLog('Recorded a funding position on ' + i.title + ': ' + (meta ? meta[1] : kind));
+        if (kind === 'ask') { state.insurerClarif.regimen = i.id; }
+      }
+      state.insurerAssurance.posOpen = null; state.insurerAssurance.posReason = '';
+      renderAll();
+    }
     else if (action === 'ins-ev-csv') { insRecord('Evidence record exported', 'Full evidence record (CSV)', insEvidence().length + ' entries at export.', null); downloadFile('WeCollate_payer_evidence_' + new Date().toISOString().slice(0,10) + '.csv', insEvidenceCsv(), 'text/csv'); renderAll(); }
     else if (action === 'ins-ev-statement') { insRecord('Evidence statement issued', 'Payer evidence statement', insEvidence().length + ' entries at issue.', null); downloadFile('WeCollate_payer_evidence_statement_' + new Date().toISOString().slice(0,10) + '.txt', insEvidenceStatement(), 'text/plain'); renderAll(); }
     else if (action === 'ins-clar-send') { const st = state.insurerClarif; if (!st.pv) { renderAll(); return; } if (/\d{10}/.test((st.text||'').replace(/\s/g,''))) { st.blocked = true; renderAll(); return; } st.blocked = false; if ((st.text||'').trim()) { const reg = ASSURANCE_ITEMS.find(x=>x.id===st.regimen); if (!st.items) st.items = INSURER_CLARIFICATIONS.slice(); st.items.unshift({ id: 'icm'+Date.now().toString(36), regimen: reg?reg.title:'Approved protocol', question: st.text.trim(), status: 'Open', raised: new Date().toISOString().slice(0,10), turnaround: '5 working days', answer: '' }); insRecord('Clarification raised', reg?reg.title:'Approved protocol', 'Asked: "' + st.text.trim().slice(0,120) + '" Pharmacovigilance acknowledgement given; no-patient-identifier check passed. Turnaround 5 working days.', reg); st.text=''; st.pv=false; } renderAll(); }
@@ -11978,6 +12167,7 @@ function initEvents(){
     else if (bind === 'hzChair') { state.hzDraft.chair = el.value; }
     else if (bind === 'hzPharmacy') { state.hzDraft.pharmacy = el.value; }
     else if (bind === 'insEvQ') { state.insEvQ = el.value; renderAll(); focusEl('input[data-bind="insEvQ"]'); }
+    else if (bind === 'insPosReason') { state.insurerAssurance.posReason = el.value; renderAll(); focusEl('input[data-bind="insPosReason"]'); }
     else if (bind === 'eoiQ') { state.eoiQ = el.value; renderAll(); focusEl('input[data-bind="eoiQ"]'); }
     else if (bind === 'eoiDeclineReason') { state.eoiDeclineReason = el.value; renderAll(); focusEl('input[data-bind="eoiDeclineReason"]'); }
     else if (bind === 'noteText') { const n = (state.notes || []).find(x => x.id === el.getAttribute('data-id')); if (n) { n.text = el.value; persistPrefs(); } }
