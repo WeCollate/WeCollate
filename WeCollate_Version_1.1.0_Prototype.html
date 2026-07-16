@@ -807,7 +807,9 @@ let FEATURE_FLAGS = [
   // Intelligence and commercial
   { id: 'intelligence',    group: 'Intelligence and commercial', name: 'Intelligence dashboard: approval rate, turnaround', pct: 100, state: 'beta', help: 'admin.intelligence' },
   { id: 'horizonScanning', group: 'Intelligence and commercial', name: 'Horizon scanning: NHSE + NICE resource impact, brought forward, with budget one-pager', pct: 100, state: 'beta', help: 'horizon.planner' },
-  { id: 'discussionBoards', group: 'Collaboration and governance', name: 'Discussion boards: peer rooms, ask-to-join specialisms, actioned outcomes', pct: 100, state: 'beta', help: 'nav.boards' },
+  /* Flag id stays `discussionBoards` and the route stays `boards`: renaming an id
+     churns every reference for no user benefit. Only what a user READS changes. */
+  { id: 'discussionBoards', group: 'Collaboration and governance', name: 'Groups: peer groups, ask-to-join specialisms, professional body groups, actioned outcomes', pct: 100, state: 'beta', help: 'nav.boards' },
   { id: 'trialEOI', group: 'Clinical tools', name: 'Trial expression of interest: double opt-in introductions', pct: 100, state: 'beta', help: 'trials.eoi' },
   { id: 'accessibility', group: 'Platform and roadmap', name: 'Accessibility: high contrast, text sizing, read aloud', pct: 100, state: 'live', help: 'shell.access' },
   { id: 'fileDownloads', group: 'Platform and roadmap', name: 'Downloads: passported summaries, FHIR and audit exports', pct: 100, state: 'beta', help: 'document.download' },
@@ -880,7 +882,7 @@ const HELP_CONTENT = {
   'boards.noPid': { what: 'An explicit confirmation that your attachments carry no patient identifiers. Required before a post with attachments can go to the group.', why: 'An attachment is the easiest way to leak patient data, and the platform cannot read inside a file to check. So it asks you, records that it asked, and blocks until you answer.', best: 'Read it, do not tick it reflexively. The file name is checked for a ten-digit NHS-number pattern and blocked automatically, but the contents are your responsibility. If in doubt, do not attach it.', source: 'Project Instructions v0.03 section 12: never assume a message is free of patient data because the user says so.' },
   'boards.postAct': { what: 'Act on a professional body post: register interest in an event, record that you responded to a survey, or save a finding to your task list.', why: 'A body group is only useful if its events, findings and surveys lead somewhere; this turns a notice into a tracked action instead of another thing scrolled past.', best: 'Registering or responding is illustrative and session only in the prototype; nothing is sent to the body, and surveys collect no response content here.' },
   'boards.react': { what: 'React to a post: Useful, Endorse, Will adopt or Following, plus Save and Share.', why: 'These carry more meaning than a like. Endorse and Will adopt become a real signal of how the network is taking something up, which feeds the collective-assurance picture.', best: 'Use Will adopt only when your trust genuinely intends to. Reactions are illustrative and session only in the prototype.' },
-  'si.invite': { what: 'Invite people to help run and manage this project, from your trust or from similar groups across the network, and optionally announce it on the discussion boards.', why: 'A shared project needs the right people early. Building the collaboration in at creation is what turns a good idea into a joined-up piece of work rather than another solo effort.', best: 'Invite a small core to manage it; others can request to join later. The finer access and visibility are set once the project exists. Session only in the prototype.' },
+  'si.invite': { what: 'Invite people to help run and manage this project, from your trust or from similar groups across the network, and optionally announce it in your groups.', why: 'A shared project needs the right people early. Building the collaboration in at creation is what turns a good idea into a joined-up piece of work rather than another solo effort.', best: 'Invite a small core to manage it; others can request to join later. The finer access and visibility are set once the project exists. Session only in the prototype.' },
   'si.completed': { what: 'Improvements already finished at other trusts that you can adopt instead of starting your own.', why: 'Adopting a done piece of work is the fastest saving there is, and seeing what others have proven is how the network stops rebuilding the same audit. Shared knowledge means less duplicated effort.', best: 'Request the pack to get the shared method and audit tool, with lineage kept back to the owning trust. Illustrative figures.' },
   'document.sectionEdit': { what: 'Edit a single section of the protocol in place, without opening the whole authoring screen.', why: 'Most real changes touch one section. Editing it inline, with the approved version beside your draft and only the changed lines highlighted, is faster and safer than re-opening the entire protocol.', best: 'Make the change, save it as a draft, then take it through sign-off. A saved section change is never live: the maker-checker approval and the assurance shield still apply, and the rest of the protocol is untouched.' },
   'policies.edit': { what: 'Author and edit the policy: its title, version, live point of contact, and the content of each section.', why: 'A policy library is only useful if the content lives here and can be kept current, not just a list of section headings.', best: 'Write each section, reorder or add sections as needed, set a live point of contact, then Save. Saving is session-only in the prototype and the full governance and approval path still applies before a policy is issued.' },
@@ -1290,10 +1292,10 @@ const SECTORS = [
 ];
 /* Which modules each sector can be granted, mapped to a route the rail uses. */
 const SECTOR_MODULES = {
-  clinical: [['find','Protocol library'],['newprotocol','New protocol builder'],['evidence','Evidence library'],['revalidate','Revalidation'],['smpc','SmPC alerts'],['updates','Updates and education'],['academy','Academy'],['community','Community'],['messages','Messages'],['policies','Policy library'],['calculator','Dose calculator'],['approvals','Approval queue'],['intelligence','Intelligence'],['trials','Trials'],['organisation','Organisation'],['boards','Discussion boards'],['horizon','Horizon scanning'],['opsboard','Operational board']],
-  pharma: [['find','Formulary view'],['smpc','SmPC alerts'],['updates','Updates'],['messages','Medical information'],['pipeline','Pipeline'],['pharmadir','Company pages'],['trials','Trial interest'],['boards','Discussion boards'],['horizon','Horizon sharing'],['pharmacollateral','Collateral library'],['pharmaadmin','Company admin']],
+  clinical: [['find','Protocol library'],['newprotocol','New protocol builder'],['evidence','Evidence library'],['revalidate','Revalidation'],['smpc','SmPC alerts'],['updates','Updates and education'],['academy','Academy'],['community','Community'],['messages','Messages'],['policies','Policy library'],['calculator','Dose calculator'],['approvals','Approval queue'],['intelligence','Intelligence'],['trials','Trials'],['organisation','Organisation'],['boards','Groups'],['horizon','Horizon scanning'],['opsboard','Operational board']],
+  pharma: [['find','Formulary view'],['smpc','SmPC alerts'],['updates','Updates'],['messages','Medical information'],['pipeline','Pipeline'],['pharmadir','Company pages'],['trials','Trial interest'],['boards','Groups'],['horizon','Horizon sharing'],['pharmacollateral','Collateral library'],['pharmaadmin','Company admin']],
   insurer: [['find','Approved set'],['community','Assurance'],['coverage','Coverage and horizon'],['payeranalytics','Payer analytics'],['messages','Clarifications'],['insureradmin','Secure area']],
-  institutional: [['find','Library (read)'],['community','Assurance'],['boards','Discussion boards']]
+  institutional: [['find','Library (read)'],['community','Assurance'],['boards','Groups']]
 };
 /* Effective enablement: per-user override wins, then sector default, then on. */
 function sectorDefaultOn(sector, key){ return !(state.sectorEnabled[sector] && state.sectorEnabled[sector][key] === false); }
@@ -1400,7 +1402,7 @@ const ACCESS_MATRIX_ROWS = [
   { route: 'organisation', label: 'Organisation, federation and directories', flag: 'federation' },
   { route: 'pipeline', label: 'Pharma company pipeline page', flag: 'pharmaCRM' },
   { route: 'pharmadir', label: 'Pharma directory and company pages', flag: 'pharmaDirectory' },
-  { route: 'boards', label: 'Discussion boards (groups)', flag: 'discussionBoards' },
+  { route: 'boards', label: 'Groups', flag: 'discussionBoards' },
   { route: 'horizon', label: 'Horizon scanning (pre-licence, service planners only)', flag: 'horizonScanning' },
   { route: 'pharmaadmin', label: 'Pharma company admin portal', flag: 'pharmaAdmin' },
   { route: 'insureradmin', label: 'Insurer secure area', flag: 'insurerSecure' },
@@ -3486,7 +3488,7 @@ function collectNotifications(){
   } catch (e) {}
   try { (typeof seedThreads !== 'undefined' ? seedThreads : []).forEach(t => { const md = msgMeta(t.id); if (md && !md.read) items.push({ kind: 'Message', cat: 'team', text: t.subject + ' from ' + msgFromName(t.from), route: 'messages' }); }); } catch (e) {}
   (state.commNotifs || []).forEach(n => items.push({ kind: 'Community', cat: 'community', text: n.text, route: n.route || 'community', nid: n.id ? 'comm:' + n.id : undefined }));
-  items.push({ kind: 'Boards', cat: 'community', text: 'A question on the discussion boards is awaiting an answer', route: 'boards' });
+  items.push({ kind: 'Groups', cat: 'community', text: 'A question in one of your groups is awaiting an answer', route: 'boards' });
   items.push({ kind: 'Group', cat: 'community', text: 'Your request to join the Haemato-oncology peer group was accepted', route: 'boards' });
   items.push({ kind: 'Request', cat: 'community', text: 'A neighbouring trust has requested information on your oral SACT counselling', route: 'community' });
   if (flagOn('approvalQueue')) { try { queueItems().filter(x => !x.done && x.author !== user().name).slice(0, 2).forEach(x => items.push({ kind: 'Approval', cat: 'team', text: x.title + ' is waiting for a named check', route: 'approvals' })); } catch (e) {} }
@@ -3601,7 +3603,7 @@ const RAIL_BY_ROLE = {
       { route: 'academy', label: 'Academy', icon: 'check', help: 'nav.academy', flag: 'academy' },
       { route: 'evidence', label: 'Evidence', icon: 'evidence', help: 'nav.evidence' },
       { route: 'serviceimprovement', label: 'Service improvement', icon: 'handshake', help: 'si.intro', flag: 'serviceImprovement' },
-      { route: 'boards', label: 'Boards', icon: 'users', help: 'nav.boards', flag: 'discussionBoards' },
+      { route: 'boards', label: 'Groups', icon: 'users', help: 'nav.boards', flag: 'discussionBoards' },
       { route: 'trials', label: 'Trials', icon: 'flask', help: 'nav.trials', flag: 'trialMatcher' },
       { route: 'intelligence', label: 'Intelligence', icon: 'chart', help: 'nav.intelligence', flag: 'intelligence' },
       { route: 'opsboard', label: 'Operational board', icon: 'gauge', help: 'nav.opsboard', flag: 'operationalBoard' },
@@ -3618,7 +3620,7 @@ const RAIL_BY_ROLE = {
       { route: 'pipeline', label: 'Pipeline', icon: 'chart', help: 'pharma.pipeline', flag: 'pharmaCRM' },
       { route: 'pharmadir', label: 'Company pages', icon: 'grid', help: 'nav.pharmadir', flag: 'pharmaDirectory' },
       { route: 'trials', label: 'Trial interest', icon: 'flask', help: 'trials.eoiInbox', flag: 'trialEOI' },
-      { route: 'boards', label: 'Boards', icon: 'users', help: 'nav.boards', flag: 'discussionBoards' },
+      { route: 'boards', label: 'Groups', icon: 'users', help: 'nav.boards', flag: 'discussionBoards' },
       { route: 'horizon', label: 'Horizon sharing', icon: 'compass', help: 'horizon.pharma', flag: 'horizonScanning' },
       { route: 'pharmacollateral', label: 'Collateral library', icon: 'book', help: 'pharma.collateral', flag: 'collateralLibrary' },
       { route: 'pharmaadmin', label: 'Company admin', icon: 'settings', help: 'pharma.admin', flag: 'pharmaAdmin' }
@@ -5801,13 +5803,13 @@ function renderServiceImprovement(){
       <div class="field mt-2"><label class="field-label">The issue you are trying to solve</label><textarea id="siNewIssue" rows="3" placeholder="What is the problem, and what would you share? No patient data."></textarea></div>
       <div class="mt-3" style="border-top:var(--border-w) solid var(--border);padding-top:10px">
         <div class="text-small" style="font-weight:600">Collaboration ${helpBtn('si.invite')}</div>
-        <p class="text-caption text-muted mt-1">Invite people to help run and manage this project, from your trust or from similar groups across the network, and choose whether to announce it on the boards. You control who joins; the finer access and visibility are set once the project exists.</p>
+        <p class="text-caption text-muted mt-1">Invite people to help run and manage this project, from your trust or from similar groups across the network, and choose whether to announce it in your groups. You control who joins; the finer access and visibility are set once the project exists.</p>
         <input type="text" data-bind="siNewInviteQ" value="${(s.newP.inviteQ || '').replace(/"/g,'&quot;')}" placeholder="Find people by name, role or trust" style="width:100%;margin-top:6px" aria-label="Find people to invite">
         <div class="mt-2" style="max-height:190px;overflow-y:auto;border:var(--border-w) solid var(--border);border-radius:8px">
           ${suggestedPeople.length ? suggestedPeople.map(pp => { const inv = !!s.newP.invite[pp.key]; return `<div class="attention-item"><div style="min-width:0"><span class="text-small" style="font-weight:500">${pp.name}</span><div class="text-caption text-muted">${pp.role} &middot; ${pp.trust}</div></div><button type="button" class="btn btn-small ${inv ? '' : 'btn-ghost'}" data-action="si-new-invite" data-id="${pp.key}" data-name="${pp.name.replace(/"/g,'&quot;')}" data-role="${pp.role.replace(/"/g,'&quot;')}" data-trust="${pp.trust.replace(/"/g,'&quot;')}">${inv ? 'Inviting' : 'Invite'}</button></div>`; }).join('') : '<div class="text-caption text-muted" style="padding:8px">No one matches. Clear the search.</div>'}
         </div>
         <div class="row mt-2" style="gap:6px;flex-wrap:wrap;align-items:center">
-          <button type="button" class="btn btn-small ${s.newP.postBoards ? '' : 'btn-ghost'}" data-action="si-new-postboards">${s.newP.postBoards ? 'Will announce on the discussion boards &#10003;' : 'Announce on the discussion boards'}</button>
+          <button type="button" class="btn btn-small ${s.newP.postBoards ? '' : 'btn-ghost'}" data-action="si-new-postboards">${s.newP.postBoards ? 'Will announce in your groups &#10003;' : 'Announce in your groups'}</button>
           ${Object.values(s.newP.invite).filter(Boolean).length ? `<span class="text-caption text-accent">${Object.values(s.newP.invite).filter(Boolean).length} to invite when created.</span>` : ''}
         </div>
       </div>
@@ -11503,7 +11505,7 @@ function initEvents(){
     }
     else if (action === 'forum-ping') {
       const name = btn.getAttribute('data-name'), topic = btn.getAttribute('data-topic');
-      seedThreads.unshift({ id: 'ping_' + Date.now().toString(36), subject: 'Peer question: ' + topic.slice(0, 60), from: user().name + ' to ' + name, kind: 'clinical', preview: 'Governed peer-to-peer message from the discussion boards. Audited; no patient data.', when: 'just now' });
+      seedThreads.unshift({ id: 'ping_' + Date.now().toString(36), subject: 'Peer question: ' + topic.slice(0, 60), from: user().name + ' to ' + name, kind: 'clinical', preview: 'Governed peer-to-peer message from a group. Audited; no patient data.', when: 'just now' });
       forumLog(user().name + ' pinged ' + name + ' re "' + topic.slice(0,50) + '"');
       state.route = 'messages'; state.messages.activeThread = seedThreads[0].id;
       renderAll();
@@ -12101,7 +12103,7 @@ function initEvents(){
     else if (action === 'si-approve-demo') { const id = btn.getAttribute('data-id'); const s = siState(); s.req[id] = 'joined'; s.joined[id] = true; renderAll(); }
     else if (action === 'si-leave') { const id = btn.getAttribute('data-id'); const s = siState(); s.joined[id] = false; delete s.req[id]; renderAll(); }
     else if (action === 'si-new-toggle') { const s = siState(); s.newP.open = !s.newP.open; renderAll(); }
-    else if (action === 'si-new-create') { const s = siState(); const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; }; const title = g('siNewTitle'); if (title) { const invited = Object.values(s.newP.invite || {}).filter(Boolean); const contribs = [{name:user().name, role:'Project lead', trust:user().trust}].concat(invited.map(iv => ({name:iv.name, role:iv.role + ' (invited)', trust:iv.trust}))); s.mine.push({ id:'mine_'+Date.now().toString(36), title:title, lead:user().trust, leadPerson:user().name+' (you)', author:user().name, partners:invited.map(iv => iv.trust).filter((t,i,a) => a.indexOf(t) === i), theme:g('siNewTheme')||'Service improvement', status:'Recruiting', dueBy:g('siNewDue')||'', members:1 + invited.length, contributors:contribs, summary:g('siNewIssue')||'New shared project.', issue:g('siNewIssue')||'', approach:'', outcome:'', mine:true }); if (s.newP.postBoards) { state.forumTasks = state.forumTasks || []; state.forumTasks.push('Announce the new shared project "' + title + '" on the discussion boards'); } s.newP = { open:false, invite:{}, postBoards:false, inviteQ:'' }; } renderAll(); }
+    else if (action === 'si-new-create') { const s = siState(); const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; }; const title = g('siNewTitle'); if (title) { const invited = Object.values(s.newP.invite || {}).filter(Boolean); const contribs = [{name:user().name, role:'Project lead', trust:user().trust}].concat(invited.map(iv => ({name:iv.name, role:iv.role + ' (invited)', trust:iv.trust}))); s.mine.push({ id:'mine_'+Date.now().toString(36), title:title, lead:user().trust, leadPerson:user().name+' (you)', author:user().name, partners:invited.map(iv => iv.trust).filter((t,i,a) => a.indexOf(t) === i), theme:g('siNewTheme')||'Service improvement', status:'Recruiting', dueBy:g('siNewDue')||'', members:1 + invited.length, contributors:contribs, summary:g('siNewIssue')||'New shared project.', issue:g('siNewIssue')||'', approach:'', outcome:'', mine:true }); if (s.newP.postBoards) { state.forumTasks = state.forumTasks || []; state.forumTasks.push('Announce the new shared project "' + title + '" in your groups'); } s.newP = { open:false, invite:{}, postBoards:false, inviteQ:'' }; } renderAll(); }
     else if (action === 'si-new-invite') { const s = siState(); const k = btn.getAttribute('data-id'); s.newP.invite[k] = s.newP.invite[k] ? null : { name:btn.getAttribute('data-name'), role:btn.getAttribute('data-role'), trust:btn.getAttribute('data-trust') }; renderAll(); }
     else if (action === 'si-new-postboards') { const s = siState(); s.newP.postBoards = !s.newP.postBoards; renderAll(); }
     else if (action === 'si-adopt') { const s = siState(); const id = btn.getAttribute('data-id'); s.adopt[id] = !s.adopt[id]; renderAll(); }
