@@ -3186,7 +3186,7 @@ const MATURITY_NOTES = {
     regime: 'Purpose test (section 1): the value here is collaborative time saved and duplicated effort avoided, never activity observed.' }
 };
 function maturityRouteFlag(){
-  const m = { find: 'fullCorpus', policies: 'policyLibrary', evidence: 'evidenceLib', revalidate: 'revalidate', updates: 'updatesFeed', academy: 'academy', community: 'community', messages: 'messaging', calculator: 'calculator', smpc: 'smpcAlerts', home: 'home', forme: 'home', approvals: 'approvalQueue', intelligence: 'intelligence', trials: 'trialMatcher', organisation: 'federation', serviceimprovement: 'serviceImprovement', pipeline: 'pharmaCRM', pharmadir: 'pharmaDirectory', boards: 'discussionBoards', horizon: 'horizonScanning', opsboard: 'operationalBoard', pharmacollateral: 'collateralLibrary', pharmaadmin: 'pharmaAdmin', coverage: 'insurerCoverage', payeranalytics: 'insurerCoverage', insureradmin: 'insurerSecure',
+  const m = { find: 'fullCorpus', policies: 'policyLibrary', evidence: 'evidenceLib', revalidate: 'revalidate', updates: 'updatesFeed', academy: 'academy', community: 'community', messages: 'messaging', calculator: 'calculator', smpc: 'smpcAlerts', home: 'home', approvals: 'approvalQueue', intelligence: 'intelligence', trials: 'trialMatcher', organisation: 'federation', serviceimprovement: 'serviceImprovement', pipeline: 'pharmaCRM', pharmadir: 'pharmaDirectory', boards: 'discussionBoards', horizon: 'horizonScanning', opsboard: 'operationalBoard', pharmacollateral: 'collateralLibrary', pharmaadmin: 'pharmaAdmin', coverage: 'insurerCoverage', payeranalytics: 'insurerCoverage', insureradmin: 'insurerSecure',
     /* Added 16/07/2026: these routes rendered with no maturity status at all.
        The three builder steps share one flag because they are one journey; the
        document view and its inline authoring share one because they are one
@@ -3612,7 +3612,10 @@ function renderRail(){
 const RAIL_BY_ROLE = {
     clinician: [
       { route: 'home', label: 'Home', icon: 'home' },
-      { route: 'forme', label: 'For me', icon: 'check', help: 'forme.hub' },
+      /* "For me" removed 16/07/2026: it read the same buildHomeTiles() as Home, so
+         it was the same list with different grouping, and it added a rail item to
+         a rail that already had too many. Its consequence-ordering now IS Home's
+         default grouping (see homeDash). One place, not two. */
       { route: 'build', label: 'Build', icon: 'build', help: 'nav.build' },
       { route: 'approvals', label: 'Approvals', icon: 'shield', help: 'nav.approvals', flag: 'approvalQueue' },
       { route: 'messages', label: 'Messages', icon: 'mail', help: 'nav.messages' },
@@ -3799,7 +3802,7 @@ function isSalesGateway(){ return state.role === 'pharma' && (pharmaClass().gate
 
 /* Single source of truth for which role can reach which route. Master control renders this as the access matrix. */
 const ROUTE_ACCESS = {
-  clinician: ['home','forme','tasks','build','buildwizard','find','document','authoring','evidence','revalidate','community','admin','policies','messages','updates','academy','newprotocol','calculator','profile','smpc','approvals','intelligence','trials','organisation','serviceimprovement','pharmadir','insurerdir','boards','horizon','opsboard'],
+  clinician: ['home','tasks','build','buildwizard','find','document','authoring','evidence','revalidate','community','admin','policies','messages','updates','academy','newprotocol','calculator','profile','smpc','approvals','intelligence','trials','organisation','serviceimprovement','pharmadir','insurerdir','boards','horizon','opsboard'],
   pharma: ['home','find','document','updates','messages','profile','smpc','pipeline','admin','pharmadir','trials','boards','horizon','pharmacollateral','pharmaadmin'],
   insurer: ['home','find','document','community','coverage','payeranalytics','profile','admin','messages','insureradmin','insurerdir']
 };
@@ -3845,7 +3848,6 @@ function renderRoute(){
     case 'organisation': return renderOrganisation();
     case 'serviceimprovement': return renderServiceImprovement();
     case 'pipeline': return renderPipeline();
-    case 'forme': return renderForMe();
     case 'pharmadir': return renderPharmaDir();
     case 'insurerdir': return renderInsurerDir();
     case 'boards': return renderBoards();
@@ -4128,13 +4130,45 @@ function renderHomeLegacy_unused(){
   </div>`;
 }
 
+/* ---------- Home dashboard, reordered by CONSEQUENCE (16/07/2026) ----------
+   This absorbs the ONE good idea from the "For me" hub, which is now deleted.
+
+   What happened, recorded because it is the more useful lesson: on 16/07 I built
+   a separate "For me" page to unify work that was "scattered across four rail
+   items". It read the SAME buildHomeTiles() as this dashboard, so all ten of its
+   rows were these tiles with different grouping. It was a reskin. Worse, a
+   surface built to REDUCE rail sprawl was added as a 19th rail item while the
+   four items it was meant to unify all stayed. James spotted it: "I'm not really
+   sure the My section works and is much different to the home dashboard." He was
+   right.
+
+   The grouping WAS an improvement and is kept here: sections ordered by what
+   happens if you do nothing, not by volume or by an arbitrary mine/theirs split.
+   A big number is not the same as an urgent one.
+
+   The old default split was g1 "My work" / g2 "My team and network", which sorted
+   by WHOSE work it was. That is not a useful question: a safety alert and a
+   revalidation notice are both "mine" and one of them can affect a patient today. */
 function homeDash(){
   if (!state.homeDash) state.homeDash = {
-    order: ['notif','tasks','safety','messages','followup','expiring','expired','requests','approvals','awaiting','horizon','exchanges'],
+    /* Order and grouping both run safety -> blocking others -> yours -> scheduled
+       -> network. Same tiles, honest priority. */
+    order: ['safety','awaiting','followup','tasks','messages','notif','approvals','expired','expiring','requests','exchanges','horizon'],
     expanded: {}, hidden: {}, edit: false,
-    groups: [{ id:'g1', name:'My work' }, { id:'g2', name:'My team and network' }],
-    assign: { notif:'g1', tasks:'g1', safety:'g1', messages:'g1', followup:'g1', expiring:'g1', expired:'g1', requests:'g1',
-              approvals:'g2', awaiting:'g2', horizon:'g2', exchanges:'g2' }
+    groups: [
+      { id: 'g1', name: 'Safety, first' },
+      { id: 'g2', name: 'People are waiting on you' },
+      { id: 'g3', name: 'Your own list' },
+      { id: 'g4', name: 'Governance and revalidation' },
+      { id: 'g5', name: 'From the network' }
+    ],
+    assign: {
+      safety: 'g1',
+      awaiting: 'g2', followup: 'g2',
+      tasks: 'g3', messages: 'g3', notif: 'g3',
+      approvals: 'g4', expired: 'g4', expiring: 'g4',
+      requests: 'g5', exchanges: 'g5', horizon: 'g5'
+    }
   };
   return state.homeDash;
 }
@@ -4180,74 +4214,13 @@ function buildHomeTiles(){
     exchanges:{ label:'Accepted exchanges', sub:'shared protocols and policies', n:exchanges, tone:'success', route:'community', detail: [] }
   };
 }
-/* ---------- "For me": the action hub (16/07/2026) ----------
-   James: unify Approvals, Messages, tasks and requests into one entry with
-   distinct lanes. The problem it solves: work waiting on YOU was scattered
-   across four rail items, so the only way to know if anything needed you was to
-   visit all four.
-
-   Design decisions, stated rather than buried:
-   1. It reuses buildHomeTiles() verbatim. Every number here is the SAME number
-      the home dashboard shows, from the same function. A second counting path
-      would drift, and two surfaces disagreeing about how much work you have is
-      worse than one surface being incomplete.
-   2. The lanes are ordered by CONSEQUENCE, not by volume: safety first, then
-      things blocking other people, then your own list, then things you may
-      simply want to know. A count is not an argument for attention.
-   3. It is a signpost, not a new workspace. Every lane routes to the surface
-      that already owns that work, with the filter applied. Nothing is actioned
-      here, so nothing here can bypass a governance gate that lives there. */
-const FORME_LANES = [
-  { id: 'safety', title: 'Safety, first', why: 'A labelling change you have not reviewed can affect a patient today. Nothing else on this page outranks it.',
-    keys: ['safety'] },
-  { id: 'blocking', title: 'People are waiting on you', why: 'These are stopped until you act. Someone else cannot finish their work until you finish yours.',
-    keys: ['awaiting', 'followup'] },
-  { id: 'yours', title: 'Your own list', why: 'Yours to pace. Nothing here is blocking anyone else.',
-    keys: ['tasks', 'messages'] },
-  { id: 'governance', title: 'Governance and revalidation', why: 'Time-driven rather than person-driven: these arrive on a schedule, not because someone asked.',
-    keys: ['approvals', 'expired', 'expiring'] },
-  { id: 'network', title: 'From the network', why: 'Worth knowing, safe to leave. Requests and exchanges from colleagues and other trusts.',
-    keys: ['requests', 'exchanges'] }
-];
-function renderForMe(){
-  const tiles = buildHomeTiles();
-  const total = FORME_LANES.reduce((n, l) => n + l.keys.reduce((m, k) => m + ((tiles[k] && tiles[k].n) || 0), 0), 0);
-  const laneCount = (l) => l.keys.reduce((m, k) => m + ((tiles[k] && tiles[k].n) || 0), 0);
-  const row = (k) => {
-    const t = tiles[k];
-    if (!t) return '';
-    const col = homeToneColor(t.tone);
-    return `
-    <button type="button" class="attention-item" style="width:100%;text-align:left;cursor:pointer;border-left:3px solid ${t.n ? col : 'var(--border)'}" data-action="home-tile" data-route="${t.route}"${t.filter ? ` data-filter="${t.filter}"` : ''}${t.navFilter ? ` data-navfilter="${t.navFilter}"` : ''}>
-      <div style="min-width:0">
-        <span class="text-small" style="font-weight:600">${t.label}</span>
-        <div class="text-caption text-muted mt-1">${t.sub}</div>
-        ${(t.detail && t.detail.length) ? `<div class="text-caption text-muted mt-1" style="opacity:0.85">${t.detail.slice(0, 2).map(d => '&bull; ' + String(d).slice(0, 70)).join('<br>')}</div>` : ''}
-      </div>
-      <span class="pill" style="${t.n ? 'background:' + col + ';color:#fff' : ''}">${t.n}</span>
-    </button>`;
-  };
-  return `
-  <div class="view stack">
-    <div class="h1">For me ${helpBtn('forme.hub')} ${flagStatusPill('home')}</div>
-    <p class="text-secondary">Everything waiting on you, in one place, ordered by what happens if you do nothing. ${total ? 'You have <strong>' + total + '</strong> item' + (total === 1 ? '' : 's') + ' across these lanes.' : 'Nothing is waiting on you right now.'} Each lane opens the page that owns that work, with the filter already applied: this is a signpost, not a second copy of the work.</p>
-    ${FORME_LANES.map(l => {
-      const n = laneCount(l);
-      return `
-      <div class="card">
-        <div class="row-between" style="align-items:flex-start;gap:8px;flex-wrap:wrap">
-          <div style="min-width:0">
-            <div class="h3">${l.title}</div>
-            <p class="text-caption text-muted mt-1">${l.why}</p>
-          </div>
-          <span class="pill ${n ? 'pill-warning' : 'pill-neutral'}">${n}</span>
-        </div>
-        <div class="mt-2">${l.keys.map(row).join('')}</div>
-      </div>`;
-    }).join('')}
-    <p class="text-caption text-muted">Counts come from the same source as your home dashboard: this page never computes its own figures, so the two can never disagree. Illustrative throughout; nothing here is actioned on this page, and every governance gate stays on the page that owns the work.</p>
-  </div>`;
-}
+/* "For me" (FORME_LANES + renderForMe) removed 16/07/2026. It read the same
+   buildHomeTiles() as the home dashboard, so it was that dashboard's tiles with
+   different grouping: a reskin, not a second capability. Its consequence-ordering
+   was the good part and now lives in homeDash() as the default grouping.
+   The lesson worth keeping: it was built to fix rail sprawl and shipped AS a rail
+   item without removing any of the four it was meant to unify. Adding a surface
+   to reduce surfaces is a contradiction that should have been caught at design. */
 function homeMiniBar(){
   let notifs; try { notifs = collectNotifications(); } catch(e){ notifs=[]; }
   const cats = [['warnings','Safety','var(--text-danger,#c0392b)'],['governance','Governance','var(--text-warning,#b26a00)'],['team','Team','var(--text-accent)'],['community','Community','var(--text-success,#1f8a5b)']];
@@ -11280,6 +11253,26 @@ function initEvents(){
   shell.addEventListener('focusin', (e) => { const t = e.target.closest('[data-help]'); if (t) showHelp(t); });
   shell.addEventListener('focusout', (e) => { const t = e.target.closest('[data-help]'); if (t) hideHelp(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideHelp(); });
+  /* The top-bar search navigates on ENTER, never on a keystroke (16/07/2026).
+     Escape clears it and leaves you where you are. See the globalFind input
+     handler for why this changed. */
+  shell.addEventListener('keydown', (e) => {
+    const el = e.target;
+    if (!el || el.getAttribute('data-bind') !== 'globalFind') return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      state.find.q = el.value;
+      state.find.page = 0;
+      state.route = 'find';
+      renderAll();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      state.find.q = '';
+      el.value = '';
+      renderAll();
+      focusEl('input[data-bind="globalFind"]');
+    }
+  });
 
   shell.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action]');
@@ -12284,7 +12277,15 @@ function initEvents(){
   shell.addEventListener('input', (e) => {
     const el = e.target;
     const bind = el.getAttribute('data-bind');
-    if (bind === 'globalFind') { state.find.q = el.value; state.find.page = 0; if (state.route !== 'find') state.route = 'find'; renderAll(); focusEl('input[data-bind="globalFind"]'); }
+    /* globalFind: type freely, navigate on ENTER (fixed 16/07/2026).
+       This used to run `if (state.route !== 'find') state.route = 'find'` on every
+       keystroke, so typing ONE character in the top-bar search teleported the user
+       off whatever they were reading, mid-sentence, before they had finished the
+       word. It was the single most frequently hit instance of James's "the system
+       jumps around too much". Verified: typing 'p' while on Policies landed you on
+       Protocols. A search box must not navigate until the user says so. The Enter
+       handler is in the keydown listener below. */
+    if (bind === 'globalFind') { state.find.q = el.value; state.find.page = 0; if (state.route === 'find') renderAll(); focusEl('input[data-bind="globalFind"]'); }
     else if (bind === 'railFilter') { state.railFilter = el.value; renderAll(); focusEl('input[data-bind="railFilter"]'); }
     else if (bind === 'findQ') { state.find.q = el.value; state.find.page = 0; renderAll(); focusEl('input[data-bind="findQ"]'); }
     else if (bind === 'findFullDemo') { state.find.fullDemo = el.checked; state.find.page = 0; renderAll(); }
