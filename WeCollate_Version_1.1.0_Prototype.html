@@ -5276,10 +5276,83 @@ function renderDmModal(){
   </div>`;
 }
 /* One trust rendered as a semantic, drill-down dashboard (My Trust and every other trust use the same view). */
+/* ---------- Per-organisation profile tabs (16/07/2026) ----------
+   The trust profile was one long scroll of stacked cards. Tabs let a clinician
+   answer the question they actually arrived with ("what do they run?", "who do I
+   ask?") without reading past four cards that answer something else.
+
+   The privacy boundary is unchanged and is enforced per tab, not by hiding a
+   link: another trust's profile shows its public profile and aggregate,
+   small-cell-suppressed activity only. Trust-private content never leaves the
+   trust that produced it (privacyScope; v0.03 section 13). Nothing here is a new
+   projection: every tab renders what this view already had access to. */
+const ORG_TABS = [['overview','Overview'],['protocols','Protocols'],['policies','Policies'],['groups','Groups'],['people','People']];
+function orgTab(){ return state.orgTab || 'overview'; }
+function orgProtocolsTab(o){
+  const mine = !!o.mine;
+  const forks = Object.keys(state.trustForks || {}).length;
+  const shared = allProtocols().filter(p => p.status === 'approved' || p.status === 'published').slice(0, 6);
+  return `
+  <div class="card">
+    <div class="h3">Protocols and adoption ${helpBtn('org.dirActivity')}</div>
+    <p class="text-caption text-muted mt-1">${mine ? 'What your trust runs, adopts and shares.' : 'What this organisation has adopted from the alliance commons, in aggregate. You never see another trust\'s drafts, saved copies or internal commentary.'}</p>
+    <table class="simple mt-2"><tbody>
+      <tr><td class="text-small">Alliance baselines adopted</td><td class="mono">${suppressStat('12', mine ? 12 : 9)}</td></tr>
+      <tr><td class="text-small">Local saved copies held</td><td class="mono">${mine ? (forks + ' (this session)') : suppressStat('3', 3)}</td></tr>
+      <tr><td class="text-small">Protocols shared to the commons</td><td class="mono">${suppressStat('4', 4)}</td></tr>
+    </tbody></table>
+    <p class="text-caption text-muted mt-2">Counts of documents, never patients. Figures illustrative; values under five withheld (small-cell IG guardrail).</p>
+  </div>
+  ${mine ? `
+  <div class="card">
+    <div class="h3">Shared to the commons by this trust</div>
+    <p class="text-caption text-muted mt-1">Approved and published protocols this trust contributes to the alliance. Illustrative selection.</p>
+    <div class="card" style="padding:0;margin-top:var(--space-2)">
+      ${shared.map(p => `<button type="button" class="list-row" style="grid-template-columns: 2fr 1fr 0.8fr" data-action="open-doc" data-id="${p.id}"><div style="font-weight:500">${p.title}</div><div class="text-small text-secondary">${p.tumourGroup}</div><div>${statusPill(p.status)}</div></button>`).join('')}
+    </div>
+  </div>` : `
+  <div class="card" style="background:var(--surface-1)">
+    <p class="text-small text-secondary">Only aggregate adoption counts cross a trust boundary. To see what another trust actually wrote, request an exchange: the owning trust decides, and the decision is audited.</p>
+    <button type="button" class="btn btn-small mt-2" data-action="nav" data-route="community">Request an exchange</button>
+  </div>`}`;
+}
+function orgPoliciesTab(o){
+  const mine = !!o.mine;
+  const pol = (typeof POLICIES !== 'undefined' ? POLICIES : []).slice(0, 5);
+  return `
+  <div class="card">
+    <div class="h3">Policies ${helpBtn('nav.policies')}</div>
+    <p class="text-caption text-muted mt-1">${mine ? 'Policies your trust holds and maintains. A policy with no live owner is a governance failure and is shown as one.' : 'Policies this organisation has published for exchange. Named contacts resolve from the directory, never from the document body (section 16).'}</p>
+    ${pol.length ? `<div class="card" style="padding:0;margin-top:var(--space-2)">
+      ${pol.map(p => `<button type="button" class="list-row" style="grid-template-columns: 2fr 1fr" data-action="open-policy" data-id="${p.id}"><div style="font-weight:500">${p.title}</div><div class="text-small text-secondary">${p.version || 'v1.0'}</div></button>`).join('')}
+    </div>` : '<p class="text-small text-secondary mt-2">No policies listed for this organisation in the illustrative record.</p>'}
+    <p class="text-caption text-muted mt-2">Illustrative. Policy exchange between trusts is governed and audited.</p>
+  </div>`;
+}
+function orgGroupsTab(o){
+  const mine = !!o.mine;
+  const gs = (typeof boardGroups === 'function' ? boardGroups() : []).filter(g => g.sector === 'clinical').slice(0, 5);
+  return `
+  <div class="card">
+    <div class="h3">Groups and collaboration ${helpBtn('nav.boards')}</div>
+    <p class="text-caption text-muted mt-1">${mine ? 'Groups your colleagues take part in.' : 'Open and ask-to-join groups where people from this organisation collaborate. Private groups are not listed to non-members.'}</p>
+    ${gs.length ? gs.map(g => `<div class="attention-item"><div><span class="text-small" style="font-weight:500">${g.name}</span><div class="text-caption text-muted mt-1">${g.specialism} &middot; ${grpMemberCount(g)} members</div></div><button type="button" class="btn btn-small" data-action="forum-open-room" data-id="${g.id}">Open</button></div>`).join('') : '<p class="text-small text-secondary mt-2">No groups listed.</p>'}
+    <p class="text-caption text-muted mt-2">Illustrative. Membership counts are aggregate; no individual is named without their own directory entry.</p>
+  </div>`;
+}
+function orgPeopleTab(o){
+  return `
+  <div class="card">
+    <div class="h3">People at this trust ${helpBtn('org.people')}</div>
+    <p class="text-caption text-muted mt-1">Listed under their hospital. Send a secure message across trusts, inside the governance boundary. Illustrative directory; live accounts come from verified NHS identity.</p>
+    ${(() => { const grp = {}; orgPeopleFor(o.id).forEach(p => { (grp[p.hospital] = grp[p.hospital] || []).push(p); }); const esc = (x) => String(x).replace(/"/g, '&quot;'); return Object.keys(grp).map(h => `<div class="mt-2"><div class="text-caption text-accent" style="font-weight:600">${h}</div>${grp[h].map(p => `<div class="attention-item"><div><span class="text-small" style="font-weight:500">${p.name}</span><div class="text-caption text-muted mt-1">${p.role}</div></div><button type="button" class="btn btn-small" data-action="dm-open" data-name="${esc(p.name)}" data-role="${esc(p.role)}" data-trust="${esc(o.name)}" data-hospital="${esc(h)}">Message</button></div>`).join('')}</div>`).join(''); })()}
+  </div>`;
+}
 function renderTrustDashboard(o){
   const mine = !!o.mine;
   const sc = o.sector === 'NHS' ? 'pill-success' : 'pill-neutral';
-  const forks = Object.keys(state.trustForks || {}).length;
+  const tab = orgTab();
+  const tabBtn = ([id, label]) => `<button type="button" class="smpc-chip" aria-pressed="${tab === id}" data-action="org-tab" data-tab="${id}">${label}</button>`;
   return `
   <div class="stack">
     <div class="row" style="gap:var(--space-3);align-items:center;flex-wrap:wrap">
@@ -5295,6 +5368,8 @@ function renderTrustDashboard(o){
         <div><div class="text-caption text-muted">Declared expertise</div><div class="text-small" style="font-weight:500">${(o.exp || []).length} areas</div></div>
       </div>
     </div>
+    <div class="dir-tabs">${ORG_TABS.map(tabBtn).join('')}</div>
+    ${tab === 'overview' ? `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4)">
       <div class="card">
         <div class="h3">Sites and hospitals ${helpBtn('org.dirSites')}</div>
@@ -5305,22 +5380,12 @@ function renderTrustDashboard(o){
         <div class="mt-2">${(o.exp || []).map(e => `<span class="dir-tag">${e}</span>`).join('')}</div>
         <p class="text-caption text-muted mt-2">Illustrative seed classification. Verify against the provider's published service specification before operational use.</p>
       </div>
-      <div class="card">
-        <div class="h3">WeCollate activity ${helpBtn('org.dirActivity')}</div>
-        <table class="simple mt-2"><tbody>
-          <tr><td class="text-small">Alliance baselines adopted</td><td class="mono">${suppressStat('12', mine ? 12 : 9)}</td></tr>
-          <tr><td class="text-small">Local saved copies held</td><td class="mono">${mine ? (forks + ' (this session)') : suppressStat('3', 3)}</td></tr>
-          <tr><td class="text-small">Protocols shared to the commons</td><td class="mono">${suppressStat('4', 4)}</td></tr>
-        </tbody></table>
-        <p class="text-caption text-muted mt-2">Counts of documents, never patients. Figures illustrative; values under five withheld (small-cell IG guardrail).</p>
-      </div>
     </div>
-    <div class="card">
-      <div class="h3">People at this trust ${helpBtn('org.people')}</div>
-      <p class="text-caption text-muted mt-1">Listed under their hospital. Send a secure message across trusts, inside the governance boundary. Illustrative directory; live accounts come from verified NHS identity.</p>
-      ${(() => { const grp = {}; orgPeopleFor(o.id).forEach(p => { (grp[p.hospital] = grp[p.hospital] || []).push(p); }); const esc = (x) => String(x).replace(/"/g, '&quot;'); return Object.keys(grp).map(h => `<div class="mt-2"><div class="text-caption text-accent" style="font-weight:600">${h}</div>${grp[h].map(p => `<div class="attention-item"><div><span class="text-small" style="font-weight:500">${p.name}</span><div class="text-caption text-muted mt-1">${p.role}</div></div><button type="button" class="btn btn-small" data-action="dm-open" data-name="${esc(p.name)}" data-role="${esc(p.role)}" data-trust="${esc(o.name)}" data-hospital="${esc(h)}">Message</button></div>`).join('')}</div>`).join(''); })()}
-    </div>
-    ${mine ? `<p class="text-caption text-muted">This is your trust. The hierarchy, federation and admin detail below is your live structural layer.</p>` : `<div class="card"><p class="text-small text-secondary">You are viewing another organisation in the directory. You see its public profile and aggregate, suppressed activity only. Trust-private content stays inside that trust (privacyScope).</p></div>`}
+    ${mine ? `<p class="text-caption text-muted">This is your trust. The hierarchy, federation and admin detail below is your live structural layer.</p>` : `<div class="card"><p class="text-small text-secondary">You are viewing another organisation in the directory. You see its public profile and aggregate, suppressed activity only. Trust-private content stays inside that trust (privacyScope).</p></div>`}` : ''}
+    ${tab === 'protocols' ? orgProtocolsTab(o) : ''}
+    ${tab === 'policies' ? orgPoliciesTab(o) : ''}
+    ${tab === 'groups' ? orgGroupsTab(o) : ''}
+    ${tab === 'people' ? orgPeopleTab(o) : ''}
   </div>`;
 }
 /* The directory: search, filter, and a list grouped by cancer network; each row opens the trust dashboard. */
@@ -10725,6 +10790,7 @@ function initEvents(){
         renderAll();
       }
     }
+    else if (action === 'org-tab') { state.orgTab = btn.getAttribute('data-tab'); renderAll(); }
     else if (action === 'forum-kind') { state.forum.draftKind = btn.getAttribute('data-val'); renderAll(); }
     else if (action === 'forum-att-add') {
       const f = state.forum;
@@ -11304,8 +11370,8 @@ function initEvents(){
     else if (action === 'rail-filter-clear') { state.railFilter = ''; renderAll(); if (state.railFilterOpen) focusEl('.rail-filter-pop input'); }
     else if (action === 'rail-group-toggle') { state.railGroupsCollapsed = state.railGroupsCollapsed || {}; const g = btn.getAttribute('data-group'); state.railGroupsCollapsed[g] = !state.railGroupsCollapsed[g]; persistPrefs(); renderAll(); }
     else if (action === 'rail-filter-open') { state.railFilterOpen = !state.railFilterOpen; if (!state.railFilterOpen) state.railFilter = ''; renderAll(); if (state.railFilterOpen) focusEl('.rail-filter-pop input'); }
-    else if (action === 'org-open') { orgDirState().open = btn.getAttribute('data-id'); renderAll(); }
-    else if (action === 'org-dir-back') { orgDirState().open = null; renderAll(); }
+    else if (action === 'org-open') { orgDirState().open = btn.getAttribute('data-id'); state.orgTab = 'overview'; renderAll(); }
+    else if (action === 'org-dir-back') { orgDirState().open = null; state.orgTab = 'overview'; renderAll(); }
     else if (action === 'org-dir-reset') { state.orgDir = { q:'', region:'all', sector:'all', exp:'all', open:null, view: orgDirState().view }; renderAll(); }
     else if (action === 'org-view') { orgDirState().view = btn.getAttribute('data-view'); renderAll(); }
     else if (action === 'dm-open') { state.dmTo = { name: btn.getAttribute('data-name'), role: btn.getAttribute('data-role'), trust: btn.getAttribute('data-trust'), hospital: btn.getAttribute('data-hospital') }; state.dmText = ''; state.dmBlocked = false; state.dmSentTo = null; renderAll(); }
