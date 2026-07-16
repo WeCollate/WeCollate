@@ -825,6 +825,29 @@ let FEATURE_FLAGS = [
   { id: 'operationalBoard', group: 'Intelligence and commercial', name: 'Operational board: workforce, chair-time, throughput, adoption, value and resilience for trust and alliance boards', pct: 100, state: 'beta', help: 'nav.opsboard' },
   { id: 'hatWearers',      group: 'Roles and access', name: 'Hat wearers: role-hat mapping and single-point-of-failure resilience (expertise graph)', pct: 100, state: 'beta', help: 'ops.hats' },
   { id: 'costChargeback',  group: 'Intelligence and commercial', name: 'True cost and chargeback (post phase 1)', pct: 100, state: 'off', help: 'admin.future' },
+  /* ---------- Flags added 16/07/2026 to close an honest-maturity gap ----------
+     Nine user-facing surfaces carried NO maturity flag at all, so section 7 ("every
+     user-facing capability carries a maturity status") was breached in the very
+     place it names as the single source of truth: the demo bar could not cover
+     them and Master control could not switch them.
+
+     Grades below are from a measured sweep of what each surface actually offers
+     (actions and inputs rendered in the view), not from an impression. They are
+     graded conservatively: where a surface is real but its persistence is
+     session-only, it is Beta, never Live. Two are deliberately NOT flagged and the
+     reason is recorded rather than left as a silent omission:
+       - `profile` and `admin`: platform-level surfaces present for every role. They
+         are not a clinical capability that a sector administrator should be able to
+         switch off, and giving them a switch would let an administrator strand a
+         user with no way to reach their own account. Structural, not a feature.
+     `build`/`buildwizard`/`newprotocol` are three steps of ONE journey and share
+     one flag; `document`/`authoring` are the view/edit pair of one capability and
+     share one. Inventing nine flags to match nine routes would have been counting,
+     not grading. */
+  { id: 'myWork',          group: 'Core experience', name: 'My work: unified inbox of tasks, alerts, messages and notes', pct: 100, state: 'beta', help: 'nav.tasks' },
+  { id: 'protocolBuilder', group: 'Authoring and assurance', name: 'Protocol builder: chooser, guided wizard and new-protocol form', pct: 90, state: 'beta', help: 'nav.build' },
+  { id: 'protocolDoc',     group: 'Authoring and assurance', name: 'Protocol document view and inline authoring', pct: 100, state: 'beta', help: 'nav.protocols' },
+  { id: 'insurerDirectory', group: 'Roles and access', name: 'Insurer directory: organisation pages for payers', pct: 100, state: 'beta', help: 'nav.insurerdir' },
   // Platform and roadmap
   { id: 'themeSwitch',     group: 'Platform and roadmap', name: 'Theme and contrast switching',               pct: 100, state: 'live', help: 'admin.themeSwitch' },
   { id: 'userProfile',     group: 'Platform and roadmap', name: 'Editable user profile with photo',           pct: 100, state: 'beta', help: 'admin.userProfile' },
@@ -3123,10 +3146,30 @@ const MATURITY_NOTES = {
     regime: 'ABPI Clause 15.4: the clinician initiates; a CQ token records that they asked first. Pharmacovigilance (section 12): a channel that could carry an adverse event is not a general messaging channel. A ten-digit sequence consistent with an NHS number halts the action and warns the user. The duty to report an adverse event never transfers to the platform.' },
   policyLibrary: { built: 'Shared policy library with named-contact resolution and orphan-owner flagging.',
     breach: 'Named contacts must resolve from a directory and never be written into the document body (section 16). Verify before relying on any contact shown.',
-    regime: 'Section 16: a policy with a dead contact is a governance failure and must be visible on the artefact itself, not only in an admin view.' }
+    regime: 'Section 16: a policy with a dead contact is a governance failure and must be visible on the artefact itself, not only in an admin view.' },
+  myWork: { built: 'One inbox over tasks, notifications, alerts, messages and notes, with filters, inline editing, due dates and a consistent set of actions.',
+    breach: 'Session only: tasks and notes do not survive closing the browser. Real persistence is Phase 2 backend work.', regime: '' },
+  protocolBuilder: { built: 'Build chooser, guided wizard and the new-protocol form: drugs, eligibility, monitoring, toxicities and references.',
+    breach: 'Graded 90%, not 100%: a protocol created here is a session-only draft. It is never live, and the maker-checker approval and assurance shield still apply before anything reaches the library.',
+    regime: 'Section 4: every clinical artefact needs a named human owner and a named human approver before it reaches a patient-facing pathway. The builder produces a draft for a human to take through sign-off; it never approves anything.' },
+  protocolDoc: { built: 'The layered protocol view (passport, provenance, evidence expansion, trust fork, FHIR and download) and inline per-section editing with a side-by-side diff.',
+    breach: 'A saved section edit is a session-only draft. It is never live: the change still goes through sign-off.',
+    regime: 'Section 17: an AI-proposed change to clinical content is a proposal, cites its source, needs a named human approver and is reversible. Nothing here auto-applies. Section 27: clinical wording is not softened or paraphrased for readability.' },
+  insurerDirectory: { built: 'Every insurer organisation on the platform with a calm public page. Illustrative entries.',
+    breach: '', regime: 'The same boundary as the rest of the payer view: aggregate and governance material only, no patient data, no cost.' },
+  serviceImprovement: { built: 'Shared audit and improvement projects across trusts: create, invite contributors, request to join, adopt a completed pack from another trust.',
+    breach: 'Graded Beta+ at 70% built, which is a deliberate and slightly awkward pairing: the collaboration flow is genuinely near-final, but the outcome-measurement half (did the improvement actually work) is not built. Read Beta+ as "the part you can see is close"; the 70% is the honest figure for the whole capability.',
+    regime: 'Purpose test (section 1): the value here is collaborative time saved and duplicated effort avoided, never activity observed.' }
 };
 function maturityRouteFlag(){
-  const m = { find: 'fullCorpus', policies: 'policyLibrary', evidence: 'evidenceLib', revalidate: 'revalidate', updates: 'updatesFeed', academy: 'academy', community: 'community', messages: 'messaging', calculator: 'calculator', smpc: 'smpcAlerts', home: 'home', forme: 'home', approvals: 'approvalQueue', intelligence: 'intelligence', trials: 'trialMatcher', organisation: 'federation', serviceimprovement: 'serviceImprovement', pipeline: 'pharmaCRM', pharmadir: 'pharmaDirectory', boards: 'discussionBoards', horizon: 'horizonScanning', opsboard: 'operationalBoard', pharmacollateral: 'collateralLibrary', pharmaadmin: 'pharmaAdmin', coverage: 'insurerCoverage', payeranalytics: 'insurerCoverage', insureradmin: 'insurerSecure' };
+  const m = { find: 'fullCorpus', policies: 'policyLibrary', evidence: 'evidenceLib', revalidate: 'revalidate', updates: 'updatesFeed', academy: 'academy', community: 'community', messages: 'messaging', calculator: 'calculator', smpc: 'smpcAlerts', home: 'home', forme: 'home', approvals: 'approvalQueue', intelligence: 'intelligence', trials: 'trialMatcher', organisation: 'federation', serviceimprovement: 'serviceImprovement', pipeline: 'pharmaCRM', pharmadir: 'pharmaDirectory', boards: 'discussionBoards', horizon: 'horizonScanning', opsboard: 'operationalBoard', pharmacollateral: 'collateralLibrary', pharmaadmin: 'pharmaAdmin', coverage: 'insurerCoverage', payeranalytics: 'insurerCoverage', insureradmin: 'insurerSecure',
+    /* Added 16/07/2026: these routes rendered with no maturity status at all.
+       The three builder steps share one flag because they are one journey; the
+       document view and its inline authoring share one because they are one
+       capability. `profile` and `admin` remain deliberately unflagged: platform
+       surfaces, not switchable capabilities. */
+    tasks: 'myWork', build: 'protocolBuilder', buildwizard: 'protocolBuilder', newprotocol: 'protocolBuilder',
+    document: 'protocolDoc', authoring: 'protocolDoc', insurerdir: 'insurerDirectory' };
   return m[state.route];
 }
 function renderMaturityBar(){
