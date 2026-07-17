@@ -1,3 +1,4 @@
+<!-- WECOLLATE-BUILD:21226FAE9EF9FD42AF8819D50D6ED6B8 -->
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
@@ -546,9 +547,25 @@ table.simple td { padding: 8px var(--space-2); border-bottom: var(--border-w) so
 #help-popover {
   position: fixed; z-index: 60; max-width: 340px; background: var(--surface-2); border: var(--border-w) solid var(--border);
   border-radius: var(--radius-card); box-shadow: 0 6px 24px rgba(0,0,0,0.12); padding: var(--space-4);
-  pointer-events: none;
+  /* Pointer events are ON (17/07/2026). A source line or a long "why it matters"
+     must be readable, and reading means reaching for it with the mouse. The
+     popover is a sibling of #shell, not a child, so it never swallows the
+     delegated mouseout that closes it. The grace period in hideHelpDelayed is
+     what makes the reach possible; see showHelp. */
+  pointer-events: auto;
 }
 #help-popover[hidden] { display: none; }
+/* The arrow ties the popover to the "?" that opened it. Placed by showHelp,
+   which sets --hp-arrow-top / --hp-arrow-side against the trigger's centre. */
+#help-popover .hp-arrow {
+  position: absolute; width: 10px; height: 10px; background: var(--surface-2);
+  border-left: var(--border-w) solid var(--border); border-bottom: var(--border-w) solid var(--border);
+  top: var(--hp-arrow-top, 16px); pointer-events: none;
+}
+#help-popover[data-side="right"] .hp-arrow { left: -6px; transform: rotate(45deg); }
+#help-popover[data-side="left"] .hp-arrow { right: -6px; transform: rotate(-135deg); }
+#help-popover[data-side="below"] .hp-arrow { top: -6px; left: var(--hp-arrow-side, 16px); transform: rotate(135deg); }
+#help-popover[data-side="above"] .hp-arrow { top: auto; bottom: -6px; left: var(--hp-arrow-side, 16px); transform: rotate(-45deg); }
 #help-popover .hp-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
 #help-popover .hp-row { font-size: 12.5px; margin-top: 6px; }
 #help-popover .hp-label { color: var(--text-muted); font-size: 11px; text-transform: none; display: block; margin-bottom: 1px; }
@@ -1145,6 +1162,15 @@ const HELP_CONTENT = {
   'smpc.reviewed': { what: 'Mark an alert reviewed once your team has considered it; reviewed alerts can be hidden from the list.', why: 'A safety feed that only ever grows becomes noise; recording review keeps the signal honest and auditable.', best: 'Review the affected protocols before marking an alert reviewed, not after.', source: 'WeCollate design direction, living evidence model.' },
   'authoring.checkers': { what: 'Choose three named, active colleagues as checkers; the author can never be one of them.', why: 'Maker-checker separation is the human layer of the shield: accountability stays with named people, never with the system.', best: 'Pick checkers who genuinely know the tumour group; a signature from the wrong specialty is compliance theatre.', source: 'WeCollate design direction, Appendix T, multi-checker and fast-track.' },
   'policies.ack': { what: 'A named, dated record that you have read this exact version of the policy.', why: 'Version-tied acknowledgement is what lets a trust prove its staff saw the guidance that was current at the time.', best: 'Re-read and re-acknowledge whenever the version changes; the old acknowledgement never carries over.', source: 'WeCollate design direction, governance workflows.' },
+  /* Added 17/07/2026. These three keys were referenced by helpBtn() but had no
+     HELP_CONTENT entry, so showHelp() hit `if (!content) { hidden = true }` and
+     the "?" did nothing at all. policies.cloneSearch was already dead before
+     this pass; offLabel and authority arrived with the bevacizumab transcription.
+     A "?" that answers nothing is worse than no "?", because it advertises help
+     that is not there. */
+  'policies.offLabel': { what: 'The source guideline states that this rate of administration is off-label, and that patients must be informed and consented under the hospital’s policy on unlicensed medication and off-label indications.', why: 'An off-label rate read off a screen looks identical to a licensed one. The distinction changes what the prescriber must tell the patient and what the trust must have approved locally.', best: 'Confirm local Drugs and Therapeutics Committee adoption before this rate is used, and record the consent conversation.', source: 'WMCA Bevacizumab Rapid Infusion Guideline v1.0, sections 2 and 3.' },
+  'policies.authority': { what: 'The expert advisory group that published the source document, its approval signatures and its review date, as recorded in the document itself.', why: 'A clinical document carries the authority of whoever approved it. Showing the named approvers and the review date is what separates published guidance from a page of text.', best: 'Check the review date: guidance past its review point is not automatically withdrawn, but it is no longer assured.', source: 'Approval block of the source PDF.' },
+  'policies.cloneSearch': { what: 'Searches policies shared by other trusts on the network so you can adopt an existing structure instead of starting from an empty page.', why: 'Most trusts write the same policies independently. Reusing a structure that already works is the collaborative time saving this platform exists for.', best: 'Adopting copies the structure only, never the clinical text or the point of contact; both stay yours to author.', source: 'WeCollate policy library, network adoption flow.' },
   'document.premedication': { what: 'Premedication given before or alongside the regimen.', why: 'Premedication is part of safe delivery and part of the chair-time footprint; it belongs in the protocol, not in habit.', best: 'One premedication per line, with its timing relative to the dose.', source: 'WeCollate structured protocol model.' },
   'document.administration': { what: 'How the regimen is administered and what the patient is counselled on.', why: 'Administration detail is where safe practice and patient understanding live.', best: 'One clear instruction per line.', source: 'WeCollate structured protocol model.' },
   'document.supportive': { what: 'Supportive care measures accompanying the regimen.', why: 'Supportive care shapes tolerability and the true operational footprint.', best: 'One measure per line.', source: 'WeCollate structured protocol model.' },
@@ -1477,11 +1503,61 @@ const POLICIES = [
     source: 'SACT_Spillage_Guideline_v5.0_Sept_2025_final1.pdf, held in this trunk',
     sections: ['Spill kit equipment', 'Immediate containment', 'Personal protective equipment', 'Decontamination steps', 'Waste disposal', 'Incident reporting'],
     summary: 'Alliance guidance for containing and clearing a SACT spillage, including spill kit contents (FFP3 respirator mask, nitrile gloves, purple-lidded cytotoxic waste) and step-by-step containment. Full document in the trunk; content not re-typed here.' },
+  /* ------------------------------------------------------------------
+     TRANSCRIBED VERBATIM 17/07/2026 from the source PDF held in this
+     trunk: "WMCA - Cancer Alliance Docs and Research/WMCA Bevacizumab
+     Rapid Infusion Guideline v1.0 April 2026 Final.pdf" (7 pages).
+
+     WHY THIS RECORD WAS REWRITTEN. The previous seed was WRONG, not
+     merely thin, and it is worth recording exactly how, because the
+     same failure will be waiting in any bulk extraction:
+
+       - Table 1 in the source has THREE columns (dose / first infusion
+         / subsequent infusions). The old `tiers` array had TWO. The
+         "first infusion" column had been dropped and only the
+         subsequent-infusion rate kept, under the caption "Reproduced
+         from the published guideline".
+       - Read at a screen that said: 5 mg/kg, over 10 minutes. The
+         source says the FIRST infusion is over 30 minutes at EVERY
+         dose, and s.4.1 permits the rapid rate only for patients whose
+         first infusion ran over 30 minutes without a serious reaction.
+         The old table told a nurse to do the one thing the guideline
+         exists to prevent.
+       - The 7.5 mg/kg tier was missing entirely.
+       - The section list ('Rationale', 'Eligibility for rapid
+         infusion', 'Reversion criteria'...) did not match the
+         document's actual sections. "Reversion criteria" is not a
+         section in the source at all.
+       - The off-label status was absent. The source states it twice
+         and requires patient consent under local unlicensed-medicines
+         policy.
+
+     A dropped column is not a formatting error when the column is the
+     first infusion rate. Project Instructions s.5.
+
+     Body text below is the source's own wording. Nothing is
+     paraphrased, summarised or improved. Where the source is silent,
+     this record is silent.
+     ------------------------------------------------------------------ */
   { id: 'beva', title: 'WMCA Bevacizumab Rapid Infusion Guideline', version: 'v1.0', issued: 'April 2026', reviewDays: 180, assignedPocId: 'acc2',
     source: 'WMCA Bevacizumab Rapid Infusion Guideline v1.0 April 2026 Final.pdf, held in this trunk',
-    sections: ['Rationale', 'Eligibility for rapid infusion', 'Infusion schedule by dose tier', 'Monitoring', 'Reversion criteria'],
-    tiers: [ ['15 mg/kg', 'over 30 minutes'], ['10 mg/kg', 'over 20 minutes'], ['5 mg/kg', 'over 10 minutes'] ],
-    summary: 'Alliance guidance mapping bevacizumab rapid infusion schedules to mg/kg dose tiers. Full document in the trunk.' },
+    sourcePath: 'WMCA - Cancer Alliance Docs and Research/WMCA Bevacizumab Rapid Infusion Guideline v1.0 April 2026 Final.pdf',
+    transcribed: '17/07/2026, verbatim from the source PDF, section by section',
+    offLabel: 'This is an off-label rate of administration for bevacizumab. Patients should be informed of this and consented to treatment in line with the hospital’s policy on the use of unlicensed medication and unlicensed or “off label” indications.',
+    authority: { eag: 'West Midlands Cancer Alliance Systemic Anticancer Treatment Expert Advisory Group (WMCA SACT EAG)', published: '14 April 2026', review: '14 April 2028', drafted: 'Drafted by Lynn Ansell, then reviewed and agreed by the SACT EAG', approvals: [ ['SACT EAG Co-Chair', 'Lynn Ansell', '01.04.26'], ['SACT EAG Co-Chair', 'Samantha Toland', '01.04.26'], ['WMCA Clinical Director', 'Dr Lydia Fresco', '14.04.2026'] ] },
+    sections: ['Introduction', 'Scope', 'Infusion Rates', 'Patient Selection', 'Use of Pre-medications to prevent IRRs', 'Monitoring', 'References'],
+    body: {
+      'Introduction': 'The bevacizumab administration schedule recommended in the product monograph uses a 90-minute infusion with the first dose, 60-minutes with the second dose and 30-minutes with subsequent doses.\n\nHowever, it has been reported that a more rapid infusion rate is safe with very minimal risk of infusion reactions. The published data, detailed below, showed that the more rapid infusion rate does not appear to increase the incidence of reactions which remain extremely low, and usually mild (1-6)',
+      'Scope': 'The purpose of this document is to provide guidance on the optimal infusion rates for Bevacizumab to facilitate the increasing amount of Bevacizumab containing regimens being administered within SACT day units\n\nThe guidance does not override the individual responsibility of healthcare professionals to make appropriate decisions according to the circumstances of the individual patient, in consultation with the patient and /or carer. Healthcare professionals must be prepared to justify any deviation from this guidance.\n\nThe information contained within this guidance is the most accurate and up to date, at date of approval. This document is intended for local adoption and approval at Drugs and Therapeutics Committee, or equivalent, in line with hospital policy. This is an off-label rate of administration for bevacizumab. Patients should be informed of this and consented to treatment in line with the hospital’s policy on the use of unlicensed medication and unlicensed or “off label” indications. Prescribers should be fully aware of their responsibility in communicating any relevant information to the patient.',
+      'Infusion Rates': 'The recommended off-label administration rate of Bevacizumab based on the available evidence is detailed in Table 1.',
+      'Patient Selection': '4.1 Suitable Patients\n\nThe rapid infusion rate for subsequent infusions is only to be used in patients who received the first infusion over 30mins and did not experience any serious infusion-related reactions.\n\n4.2 Patients Unsuitable for Rapid Infusion\n\n• Patients who have experienced a previous serious infusion-related reaction to any prior biologic therapy\n• Patients deemed unsuitable by their treating clinician',
+      'Use of Pre-medications to prevent IRRs': 'There is no need for a standard premedication regimen for prevention or prophylaxis of infusion reactions.',
+      'Monitoring': 'Monitoring requirements for bevacizumab must continue to follow the approved licence recommendations alongside all relevant local policies, protocols, and governance frameworks. Patients receiving bevacizumab, whether via standard or rapid infusion, should undergo the same clinical assessments, observations, and safety monitoring outlined in the Summary of Product Characteristics (SmPC) and local Trust procedures, including monitoring for hypertension, proteinuria, infusion-related reactions, and treatment-specific toxicities. Rapid infusion administration does not replace or reduce any mandated monitoring requirements, and all staff must ensure that observation frequency, documentation standards, and escalation pathways remain fully aligned with local governance and national regulatory guidance.',
+      'References': '1. Diane L. Reidy, Ki Y. Chung, John P. Timoney, Vivian J. Park, Ellen Hollywood, Nancy T. Sklarin, Raymond J. Muller, Leonard B. Saltz. Bevacizumab 5 mg/kg Can Be Infused Safely Over 10 Minutes. J Clin Oncol 25, 2691-2695 (2007)\n\n2. Dohn LH, Jensen BV, Larsen FO. Short time infusion of bevacizumab in combination with 5FU-based chemotherapy as first-line therapy in a non-selective patient group with metastatic colorectal cancer. Acta Oncol. 2010 Apr;49(3):395-6\n\n3. Mahfoud T, Tanz R, Mesmoudi M, Khmamouche MR, Bazine A, Aassab R, Ismaili N, Boutayeb S, Ichou M, Errihani H. Bevacizumab 5 or 7.5 mg/kg in metastatic colorectal cancer can be infused safely over 10 minutes. J Gastrointest Cancer. 2012 Jun;43(2):244-8\n\n4. Mir O, Alexandre J, Coriat R, Ropert S, Boudou-Rouquette P, Bui T, Chapron J, Durand JP, Dusser D, Goldwasser F. Safety of bevacizumab 7.5 mg/kg infusion over 10 minutes in NSCLC patients. Invest New Drugs. 2012 Aug;30(4):1756-60\n\n5. Makris G, Kantzioura A, Beredima M, Karampola M, Emmanouilides C. Feasibility of rapid infusion of the initial dose of bevacizumab in patients with cancer. J BUON. 2015 May-Jun;20(3):923-7\n\n6. García Gil S, Gutiérrez Nicolás F, González De La Fuente GA, Nazco Casariego GJ, Viña Romero MM, Batista López JN. Ten-minute administration of bevacizumab. Eur J Hosp Pharm. 2019 Jul;26(4):218-219'
+    },
+    /* Table 1, all three columns, all four tiers, exactly as published. */
+    tierTable: { caption: 'Table 1: Off-label Rapid Infusion Rate for Bevacizumab according to dose', head: ['Treatment Dose', 'First Infusion', 'Subsequent Infusions'], rows: [ ['15mg/kg', 'Infuse over 30mins', 'Infuse over 30mins'], ['10mg/kg', 'Infuse over 30mins', 'Infuse over 20mins'], ['7.5mg/kg', 'Infuse over 30mins', 'Infuse over 10mins'], ['5mg/kg', 'Infuse over 30mins', 'Infuse over 10mins'] ], section: 'Infusion Rates' },
+    summary: 'WMCA SACT EAG guidance on off-label rapid infusion rates for bevacizumab in day-case and ambulatory settings. Transcribed verbatim from the published guideline held in this trunk.' },
   /* v1.0.1 pass 24: illustrative catalogue entries. Structure only: typical SACT service policy shapes, no clinical content. */
   { id: 'extrav', title: 'SACT Extravasation Management Policy (illustrative)', version: 'v2.1', issued: 'January 2026', reviewDays: 420, assignedPocId: 'acc2',
     sections: ['Purpose', 'Scope', 'Risk grading of agents', 'Immediate management', 'Antidotes and escalation', 'Plastics referral criteria', 'Documentation and reporting'],
@@ -7500,7 +7576,22 @@ function policyCreate(entry){
 }
 function policyEditOpen(src){
   state.policyId = src.id;
-  state.policyEdit = { id: src.id, title: src.title, version: src.version, sections: src.sections.slice(), bodies: src.sections.map(s => (src.body && src.body[s]) || ''), pocId: src.assignedPocId || '' };
+  /* The editor opens on the REAL record: every field the policy actually holds
+     is loaded, not just the ones the form used to know about (17/07/2026).
+     `secIdx` remembers which section each structured block was anchored to BY
+     INDEX, so renaming a section carries its table with it instead of orphaning
+     it against a heading that no longer exists. */
+  const tt = src.tierTable ? JSON.parse(JSON.stringify(src.tierTable)) : null;
+  state.policyEdit = {
+    id: src.id, title: src.title, version: src.version,
+    sections: src.sections.slice(),
+    bodies: src.sections.map(s => (src.body && src.body[s]) || ''),
+    pocId: src.assignedPocId || '',
+    tierTable: tt,
+    tierSecIdx: tt ? src.sections.indexOf(tt.section) : -1,
+    offLabel: src.offLabel || '',
+    authority: src.authority ? JSON.parse(JSON.stringify(src.authority)) : null
+  };
 }
 function renderPolicyEditor(sel){
   const ed = state.policyEdit;
@@ -7529,10 +7620,37 @@ function renderPolicyEditor(sel){
             <button type="button" class="btn btn-small btn-ghost" data-action="policy-edit-secmove" data-idx="${i}" data-dir="down" title="Move down" aria-label="Move down" ${i === ed.sections.length - 1 ? 'disabled' : ''}>&#8595;</button>
             <button type="button" class="btn btn-small btn-ghost" data-action="policy-edit-delsec" data-idx="${i}" title="Remove section" aria-label="Remove section">&#10005;</button>
           </div>
-          <textarea data-bind="polEditSecBody" data-idx="${i}" rows="4" placeholder="Write the content for this section (illustrative in the prototype)" style="width:100%;margin-top:8px">${escT(ed.bodies[i])}</textarea>
+          <textarea data-bind="polEditSecBody" data-idx="${i}" rows="4" placeholder="Write the content for this section" style="width:100%;margin-top:8px">${escT(ed.bodies[i])}</textarea>
+          ${(ed.tierTable && ed.tierSecIdx === i) ? `
+          <div class="card mt-3" style="background:var(--surface-2)">
+            <div class="text-small" style="font-weight:600">${escT(ed.tierTable.caption)}</div>
+            <p class="text-caption text-muted mt-1">Every cell of the published table, editable. This table belongs to this section and moves with it if you rename or reorder it.</p>
+            <table class="simple mt-2">
+              <thead><tr>${ed.tierTable.head.map((h, c) => `<th><input type="text" data-bind="polEditTierHead" data-c="${c}" value="${escA(h)}" style="width:100%;font-weight:600" aria-label="Column heading ${c + 1}"></th>`).join('')}</tr></thead>
+              <tbody>${ed.tierTable.rows.map((row, r) => `<tr>${row.map((cell, c) => `<td><input type="text" data-bind="polEditTierCell" data-r="${r}" data-c="${c}" value="${escA(cell)}" style="width:100%" aria-label="Row ${r + 1} column ${c + 1}"></td>`).join('')}<td><button type="button" class="btn btn-small btn-ghost" data-action="policy-edit-tierdel" data-r="${r}" title="Remove row" aria-label="Remove row">&#10005;</button></td></tr>`).join('')}</tbody>
+            </table>
+            <button type="button" class="btn btn-small mt-2" data-action="policy-edit-tieradd">Add a row</button>
+          </div>` : ''}
         </div>`).join('')}
       ${ed.sections.length ? '' : '<p class="text-caption text-muted">No sections yet. Add one to start authoring.</p>'}
     </div>
+    ${(ed.offLabel || ed.authority) ? `
+    <div class="card stack">
+      <div class="h3">Status and provenance</div>
+      <p class="text-caption text-muted">Held on the record and editable here, because these are the fields a reader most needs and the ones a structure-only editor used to drop silently.</p>
+      ${ed.offLabel !== undefined ? `
+      <div class="field">
+        <label class="field-label">Off-label statement ${helpBtn('policies.offLabel')}</label>
+        <textarea data-bind="polEditOffLabel" rows="3" placeholder="Leave empty if this document makes no off-label statement" style="width:100%">${escT(ed.offLabel)}</textarea>
+      </div>` : ''}
+      ${ed.authority ? `
+      <div class="field"><label class="field-label">Published under ${helpBtn('policies.authority')}</label><input type="text" data-bind="polEditAuthEag" value="${escA(ed.authority.eag)}"></div>
+      <div class="row" style="gap:var(--space-3);flex-wrap:wrap">
+        <div class="field"><label class="field-label">Published</label><input type="text" data-bind="polEditAuthPub" value="${escA(ed.authority.published)}" style="max-width:200px"></div>
+        <div class="field"><label class="field-label">Review by</label><input type="text" data-bind="polEditAuthRev" value="${escA(ed.authority.review)}" style="max-width:200px"></div>
+      </div>
+      <p class="text-caption text-muted">Approval signatures (${ed.authority.approvals.map(a => a[1]).join(', ')}) are held as recorded in the source document and are not editable here. A signature is evidence of what a named person approved on a date; re-typing one in a form is not.</p>` : ''}
+    </div>` : ''}
     <div class="row" style="gap:6px">
       <button type="button" class="btn btn-primary" data-action="policy-edit-save" ${(ed.title || '').trim() ? '' : 'disabled'}>Save policy (session only)</button>
       <button type="button" class="btn" data-action="policy-edit-cancel">Cancel</button>
@@ -7698,18 +7816,37 @@ function renderPolicies(){
       <div class="h3 mt-1">${poc ? poc.name : 'Unassigned'} <span class="text-small text-secondary">${poc ? ', ' + poc.role : ''}</span></div>
       <p class="text-caption text-muted mt-2">Resolved live from the staff directory, never hardcoded into the policy text, so a leaver can never silently remain the named owner.</p>
     </div>`}
+    ${sel.offLabel ? `
+    <div class="card" style="background:var(--bg-warning)">
+      <div class="h3" style="color:var(--text-warning)">Off-label administration ${helpBtn('policies.offLabel')}</div>
+      <p class="text-small mt-2" style="color:var(--text-warning)">${sel.offLabel}</p>
+      <p class="text-caption mt-2" style="color:var(--text-warning)">Stated in the source guideline. Shown here because a rate that is off-label cannot be read off a screen as though it were licensed.</p>
+    </div>` : ''}
+    ${sel.authority ? `
+    <div class="card">
+      <div class="text-small">Published under ${helpBtn('policies.authority')}</div>
+      <div class="h3 mt-1">${sel.authority.eag}</div>
+      <p class="text-small text-secondary mt-2">${sel.authority.drafted}</p>
+      <p class="text-small text-secondary">Published ${sel.authority.published}. Review by ${sel.authority.review}.</p>
+      <table class="simple mt-3">
+        <thead><tr><th>Role</th><th>Name</th><th>Date</th></tr></thead>
+        <tbody>${sel.authority.approvals.map(a => `<tr><td>${a[0]}</td><td>${a[1]}</td><td>${a[2]}</td></tr>`).join('')}</tbody>
+      </table>
+      <p class="text-caption text-muted mt-2">Approval signatures as recorded in the source document. Reproduced as evidence of provenance, not re-signed here.</p>
+    </div>` : ''}
     <div class="card">
       <div class="h3">${(sel.body && Object.keys(sel.body).length) ? 'Document content' : 'Document structure'}</div>
+      ${sel.transcribed ? `<p class="text-caption text-muted mt-1">Transcribed ${sel.transcribed}.</p>` : ''}
       ${(sel.body && Object.keys(sel.body).length)
         ? `<div class="stack mt-3">${sel.sections.map(s => { const b = sel.body[s]; return `<div><div style="font-weight:600">${s}</div>${b ? `<p class="text-small text-secondary mt-1" style="white-space:pre-wrap">${String(b).replace(/</g,'&lt;')}</p>` : '<p class="text-caption text-muted mt-1">Content to be authored.</p>'}</div>`; }).join('')}</div>`
         : `<ul class="eligibility-list mt-3">${sel.sections.map(s => `<li>${s}</li>`).join('')}</ul>`}
-      ${sel.tiers ? `
-      <div class="h3 mt-5">Rapid infusion schedule by dose tier</div>
+      ${sel.tierTable ? `
+      <div class="h3 mt-5">${sel.tierTable.caption}</div>
       <table class="simple mt-3">
-        <thead><tr><th>Dose tier</th><th>Infusion time</th></tr></thead>
-        <tbody>${sel.tiers.map(t => `<tr><td>${t[0]}</td><td>${t[1]}</td></tr>`).join('')}</tbody>
+        <thead><tr>${sel.tierTable.head.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>${sel.tierTable.rows.map(t => `<tr>${t.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>
       </table>
-      <p class="text-caption text-muted mt-2">Reproduced from the published guideline; always confirm against the full document before clinical use.</p>` : ''}
+      <p class="text-caption text-muted mt-2">Transcribed verbatim from the published guideline, every column and every row. Always confirm against the full document before clinical use.</p>` : ''}
       <p class="text-small text-secondary mt-4">${sel.summary}</p>
       <p class="badge-source">Source: ${sel.source}</p>
       <hr class="hair">
@@ -11212,6 +11349,7 @@ function showHelp(triggerEl){
   if (!content) { pop.hidden = true; return; }
   const pct = triggerEl.getAttribute('data-pct');
   pop.innerHTML = `
+    <div class="hp-arrow" aria-hidden="true"></div>
     <div class="hp-title">What this is</div>
     <div class="hp-row">${content.what || ''}</div>
     ${(pct || pct === '0') ? `<div class="hp-row"><span class="hp-label">Build progress</span><strong>${pct}% built</strong>${pct>=100?', fully built':(pct>0?', in progress':', planned, not started')}</div>` : ''}
@@ -11219,27 +11357,86 @@ function showHelp(triggerEl){
     ${content.best ? `<div class="hp-row"><span class="hp-label">Best practice</span>${content.best}</div>` : ''}
     ${content.source ? `<div class="hp-source">Source: ${content.source}</div>` : ''}
   `;
-  const r = triggerEl.getBoundingClientRect();
+  /* ----------------------------------------------------------
+     Positioning (rewritten 17/07/2026).
+
+     THE DEFECT THIS REPLACES: the old code anchored the popover's
+     TOP to the trigger's top, then clamped with
+     Math.min(r.top, innerHeight - popH - 8). For any "?" in the
+     lower half of the viewport the clamp won, so the popover was
+     dragged upward to wherever it happened to fit and floated far
+     above the "?" that opened it, connected to nothing. That is
+     the "opens too low / too far from its trigger" complaint.
+
+     THE RULE NOW: the popover's VERTICAL CENTRE tracks the
+     trigger's vertical centre, and clamping only ever happens at
+     the viewport edge. The arrow is then placed against the
+     trigger's true centre, so even a clamped popover still points
+     at the thing it describes.
+     ---------------------------------------------------------- */
+  const GAP = 10;      /* trigger to popover */
+  const EDGE = 8;      /* popover to viewport edge */
   pop.hidden = false;
-  const popW = pop.offsetWidth || 340;
+  pop.removeAttribute('data-side');
+  const r = triggerEl.getBoundingClientRect();
+  const popW = pop.offsetWidth;
   const popH = pop.offsetHeight;
-  let left, top;
-  if (r.right + 12 + popW <= window.innerWidth) {
-    /* Prefer beside the trigger, so the popover never covers menus or content below it */
-    left = r.right + 12;
-    top = Math.max(8, Math.min(r.top, window.innerHeight - popH - 8));
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  let left, top, side;
+
+  if (r.right + GAP + popW + EDGE <= window.innerWidth) {
+    side = 'right'; left = r.right + GAP;
+  } else if (r.left - GAP - popW - EDGE >= 0) {
+    /* No room on the right. Mirror to the left rather than dropping
+       below, which keeps the popover level with its trigger. */
+    side = 'left'; left = r.left - GAP - popW;
+  } else if (cy < window.innerHeight / 2) {
+    side = 'below'; left = clampVal(cx - popW / 2, EDGE, window.innerWidth - popW - EDGE); top = r.bottom + GAP;
   } else {
-    left = Math.max(8, Math.min(r.left, window.innerWidth - popW - 16));
-    top = r.bottom + 8;
-    if (top + popH > window.innerHeight) top = Math.max(8, r.top - popH - 8);
+    side = 'above'; left = clampVal(cx - popW / 2, EDGE, window.innerWidth - popW - EDGE); top = r.top - GAP - popH;
   }
+
+  if (side === 'right' || side === 'left') {
+    /* Centre on the trigger, then clamp to the viewport only. */
+    top = clampVal(cy - popH / 2, EDGE, window.innerHeight - popH - EDGE);
+  } else {
+    top = clampVal(top, EDGE, window.innerHeight - popH - EDGE);
+  }
+
+  pop.dataset.side = side;
   pop.style.left = left + 'px';
   pop.style.top = top + 'px';
+  /* Point the arrow at the trigger's real centre, measured from the
+     popover's final clamped position, so the arrow stays true even
+     when the popover has been pushed off-centre by an edge. */
+  if (side === 'right' || side === 'left') {
+    pop.style.setProperty('--hp-arrow-top', clampVal(cy - top - 5, 8, popH - 18) + 'px');
+  } else {
+    pop.style.setProperty('--hp-arrow-side', clampVal(cx - left - 5, 8, popW - 18) + 'px');
+  }
 }
+function clampVal(v, lo, hi){ return Math.max(lo, Math.min(v, Math.max(lo, hi))); }
 let helpTimer = null;
 /* A deliberate hover on a "?" answers quickly; passing over anything else must never throw a popover in the way (3 second dwell). */
-function showHelpDelayed(triggerEl){ clearTimeout(helpTimer); const c = (state.helpCfg || {}); if (c.trigger === 'click') return; const isBtn = triggerEl.classList && triggerEl.classList.contains('help-btn'); const dwell = isBtn ? (c.delay || 400) : Math.max(c.delay || 400, 1500); helpTimer = setTimeout(() => showHelp(triggerEl), dwell); }
-function hideHelp(){ clearTimeout(helpTimer); document.getElementById('help-popover').hidden = true; }
+function showHelpDelayed(triggerEl){ clearTimeout(helpTimer); clearTimeout(helpCloseTimer); const c = (state.helpCfg || {}); if (c.trigger === 'click') return; const isBtn = triggerEl.classList && triggerEl.classList.contains('help-btn'); const dwell = isBtn ? (c.delay || 400) : Math.max(c.delay || 400, 1500); helpTimer = setTimeout(() => showHelp(triggerEl), dwell); }
+function hideHelp(){ clearTimeout(helpTimer); clearTimeout(helpCloseTimer); document.getElementById('help-popover').hidden = true; }
+/* ----------------------------------------------------------
+   The grace period (17/07/2026). The popover now takes pointer
+   events so a long "why it matters" or a source line can be read,
+   and reading means reaching for it with the mouse. Leaving the
+   "?" therefore cannot close it instantly, or the reach is never
+   completed and the content may as well not be there.
+
+   140ms is long enough to cross a 10px gap and short enough that
+   an abandoned popover does not linger. The popover's own
+   mouseenter cancels the close; its mouseleave re-arms it.
+   Escape and focusout still close immediately, per the
+   accessibility note above: a keyboard user is not reaching for
+   anything and must not be made to wait.
+   ---------------------------------------------------------- */
+let helpCloseTimer = null;
+function hideHelpDelayed(){ clearTimeout(helpTimer); clearTimeout(helpCloseTimer); helpCloseTimer = setTimeout(hideHelp, 140); }
 
 /* ============================================================
    Event wiring: delegation on the shell root, bound once, so it
@@ -11249,10 +11446,21 @@ function initEvents(){
   const shell = document.getElementById('shell');
 
   shell.addEventListener('mouseover', (e) => { const t = e.target.closest('[data-help]'); if (t) showHelpDelayed(t); });
-  shell.addEventListener('mouseout', (e) => { const t = e.target.closest('[data-help]'); if (t) hideHelp(); });
+  /* Leaving the "?" arms the close, it does not perform it: the pointer may be
+     travelling to the popover to read it. See hideHelpDelayed (17/07/2026). */
+  shell.addEventListener('mouseout', (e) => { const t = e.target.closest('[data-help]'); if (t) hideHelpDelayed(); });
   shell.addEventListener('focusin', (e) => { const t = e.target.closest('[data-help]'); if (t) showHelp(t); });
   shell.addEventListener('focusout', (e) => { const t = e.target.closest('[data-help]'); if (t) hideHelp(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideHelp(); });
+  /* The popover lives outside #shell, so it needs its own pair. Reaching it
+     cancels the close; leaving it re-arms. */
+  const popEl = document.getElementById('help-popover');
+  popEl.addEventListener('mouseenter', () => { clearTimeout(helpCloseTimer); });
+  popEl.addEventListener('mouseleave', () => { hideHelpDelayed(); });
+  /* A popover anchored to fixed coordinates is wrong the moment the page moves
+     underneath it. Nothing repositioned it before, so it hung in dead space. */
+  window.addEventListener('scroll', hideHelp, true);
+  window.addEventListener('resize', hideHelp);
   /* The top-bar search navigates on ENTER, never on a keystroke (16/07/2026).
      Escape clears it and leaves you where you are. See the globalFind input
      handler for why this changed. */
@@ -11598,14 +11806,59 @@ function initEvents(){
     else if (action === 'policy-edit') { const src = POLICIES.find(x => x.id === btn.getAttribute('data-id')); if (src) { policyEditOpen(src); renderAll(); } }
     else if (action === 'policy-edit-cancel') { state.policyEdit = null; renderAll(); }
     else if (action === 'policy-edit-addsec') { const ed = state.policyEdit; if (ed) { ed.sections.push('New section'); ed.bodies.push(''); renderAll(); } }
-    else if (action === 'policy-edit-delsec') { const ed = state.policyEdit; const i = +btn.getAttribute('data-idx'); if (ed) { ed.sections.splice(i, 1); ed.bodies.splice(i, 1); renderAll(); } }
-    else if (action === 'policy-edit-secmove') { const ed = state.policyEdit; const i = +btn.getAttribute('data-idx'); const j = btn.getAttribute('data-dir') === 'up' ? i - 1 : i + 1; if (ed && j >= 0 && j < ed.sections.length) { const ts = ed.sections[i]; ed.sections[i] = ed.sections[j]; ed.sections[j] = ts; const tb = ed.bodies[i]; ed.bodies[i] = ed.bodies[j]; ed.bodies[j] = tb; renderAll(); } }
+    /* Deleting or moving a section must carry tierSecIdx with it, or the table
+       silently re-anchors to whatever section slid into that index. Found
+       17/07/2026 while adding the table to the editor: the handlers moved
+       sections and bodies together and knew nothing about the table. */
+    else if (action === 'policy-edit-delsec') {
+      const ed = state.policyEdit; const i = +btn.getAttribute('data-idx');
+      if (ed) {
+        ed.sections.splice(i, 1); ed.bodies.splice(i, 1);
+        if (ed.tierSecIdx === i) ed.tierSecIdx = -1;          /* its section is gone */
+        else if (ed.tierSecIdx > i) ed.tierSecIdx--;          /* everything above shifted down */
+        renderAll();
+      }
+    }
+    else if (action === 'policy-edit-secmove') {
+      const ed = state.policyEdit; const i = +btn.getAttribute('data-idx');
+      const j = btn.getAttribute('data-dir') === 'up' ? i - 1 : i + 1;
+      if (ed && j >= 0 && j < ed.sections.length) {
+        const ts = ed.sections[i]; ed.sections[i] = ed.sections[j]; ed.sections[j] = ts;
+        const tb = ed.bodies[i]; ed.bodies[i] = ed.bodies[j]; ed.bodies[j] = tb;
+        if (ed.tierSecIdx === i) ed.tierSecIdx = j; else if (ed.tierSecIdx === j) ed.tierSecIdx = i;
+        renderAll();
+      }
+    }
+    else if (action === 'policy-edit-tieradd') { const ed = state.policyEdit; if (ed && ed.tierTable) { ed.tierTable.rows.push(ed.tierTable.head.map(() => '')); renderAll(); } }
+    else if (action === 'policy-edit-tierdel') { const ed = state.policyEdit; const r = +btn.getAttribute('data-r'); if (ed && ed.tierTable) { ed.tierTable.rows.splice(r, 1); renderAll(); } }
     else if (action === 'policy-edit-save') {
       const ed = state.policyEdit; if (!ed || !(ed.title || '').trim()) return;
       const p = POLICIES.find(x => x.id === ed.id); if (p) {
         p.title = ed.title.trim(); p.version = (ed.version || '').trim() || p.version; p.assignedPocId = ed.pocId || null;
         p.sections = ed.sections.map(s => (s || '').trim() || 'Untitled section');
         p.body = {}; p.sections.forEach((s, i) => { p.body[s] = ed.bodies[i] || ''; });
+        /* Carry the structured blocks the form now owns. The table is
+           re-anchored to whatever its section is CALLED after editing, using
+           the index it was opened against, so a rename cannot orphan it
+           (17/07/2026). */
+        if (ed.tierTable) {
+          if (ed.tierSecIdx >= 0 && ed.tierSecIdx < p.sections.length) {
+            p.tierTable = Object.assign({}, ed.tierTable, { section: p.sections[ed.tierSecIdx] });
+          } else {
+            /* Its section was deleted. Drop the anchor rather than leave the
+               table pointing at a heading that no longer exists. */
+            delete p.tierTable;
+          }
+        }
+        const ol = (ed.offLabel || '').trim();
+        if (ol) p.offLabel = ol; else delete p.offLabel;
+        if (ed.authority) {
+          p.authority = Object.assign({}, p.authority, {
+            eag: (ed.authority.eag || '').trim(),
+            published: (ed.authority.published || '').trim(),
+            review: (ed.authority.review || '').trim()
+          });
+        }
         p.edited = true;
       }
       state.policyEdit = null; renderAll();
@@ -12322,6 +12575,14 @@ function initEvents(){
     else if (bind === 'polEditVersion') { if (state.policyEdit) state.policyEdit.version = el.value; }
     else if (bind === 'polEditSecTitle') { if (state.policyEdit) state.policyEdit.sections[+el.getAttribute('data-idx')] = el.value; }
     else if (bind === 'polEditSecBody') { if (state.policyEdit) state.policyEdit.bodies[+el.getAttribute('data-idx')] = el.value; }
+    /* The structured blocks the editor gained on 17/07/2026. Each writes straight
+       to the working copy in state.policyEdit; nothing reaches POLICIES until Save. */
+    else if (bind === 'polEditTierCell') { const ed = state.policyEdit; if (ed && ed.tierTable) ed.tierTable.rows[+el.getAttribute('data-r')][+el.getAttribute('data-c')] = el.value; }
+    else if (bind === 'polEditTierHead') { const ed = state.policyEdit; if (ed && ed.tierTable) ed.tierTable.head[+el.getAttribute('data-c')] = el.value; }
+    else if (bind === 'polEditOffLabel') { if (state.policyEdit) state.policyEdit.offLabel = el.value; }
+    else if (bind === 'polEditAuthEag') { const ed = state.policyEdit; if (ed && ed.authority) ed.authority.eag = el.value; }
+    else if (bind === 'polEditAuthPub') { const ed = state.policyEdit; if (ed && ed.authority) ed.authority.published = el.value; }
+    else if (bind === 'polEditAuthRev') { const ed = state.policyEdit; if (ed && ed.authority) ed.authority.review = el.value; }
     else if (bind === 'polEditPoc') { if (state.policyEdit) state.policyEdit.pocId = el.value || ''; }
     else if (bind === 'authLine') { const p = findProtocol(state.activeId); if (p) { state.authoringDraft = state.authoringDraft || {}; if (!state.authoringDraft[p.id]) state.authoringDraft[p.id] = { lines: [] }; state.authoringDraft[p.id].lines[+el.getAttribute('data-idx')] = el.value; } }
     else if (bind === 'secLine') { const sid = el.getAttribute('data-sec'); state.sectionDrafts = state.sectionDrafts || {}; if (state.sectionDrafts[sid]) { state.sectionDrafts[sid].lines[+el.getAttribute('data-idx')] = el.value; } }
