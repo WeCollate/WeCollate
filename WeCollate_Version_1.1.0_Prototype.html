@@ -1,4 +1,4 @@
-<!-- WECOLLATE-BUILD:F4FA8D1B2950589F49434B7525D8D8CE -->
+<!-- WECOLLATE-BUILD:31EAA9D00F30F4B5A765341B9A4B0A2C -->
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
@@ -1162,6 +1162,9 @@ const HELP_CONTENT = {
   'insurer.clarification': { what: 'A governed question from an insurer medical officer to a trust about an approved protocol.', why: 'A formal, logged clarification route prevents the informal phone calls that governance cannot see.', best: 'Aggregate context only; the NHS-number intercept and PV gates apply exactly as they do to clinicians.', source: 'WeCollate insurer portal design.' },
   'pharma.salesBlock': { what: 'A commercial (sales) gateway class is structurally denied any clinical communication channel.', why: 'ABPI separation between promotional and medical-scientific activity is enforced in the architecture, not by trust or training.', best: 'Medical information flows only through a declared MSL (medical) gateway; there is nothing to configure or request.', source: 'ABPI Code of Practice, medical and commercial separation; WeCollate gating rules.' },
   'evidence.search': { what: 'Search the attributed evidence entries held against your protocol library.', why: 'Evidence you can find again is evidence you can defend; every entry keeps its source, tier and licence status.', best: 'Search by drug or source; if nothing is held, ask the community or run a bounded external check rather than the open internet.', source: 'WeCollate design direction, living evidence model.' },
+  /* Added 17/07/2026 with the attach flow. */
+  'evidence.attach': { what: 'Proposes this evidence against a protocol you choose. It lands in that protocol\'s Evidence section marked pending a checker, named and dated, with your reason.', why: 'Discovery proposes; a human disposes; a checker decides. Finding a citation is not the same as deciding it belongs, and the platform must never blur the two.', best: 'Attach to the specific protocol the evidence actually supports, not to everything it mentions. A checker reviews your reason, not the citation alone.', source: 'WeCollate design direction, living evidence model; the three-step sentence this page has always carried.' },
+  'evidence.why': { what: 'Your reason for attaching this evidence to this protocol. Required.', why: 'A citation with no reason cannot be reviewed, only accepted on trust. The reason is what the checker actually examines: does this source support this line, in this protocol, for this indication.', best: 'Name the line or section it supports. "Supports the monitoring line" beats "relevant guidance".', source: 'WeCollate design direction, maker-checker separation.' },
   'admin.staffDirectory': { what: 'The live directory of named accounts that policies and protocols resolve their owners from.', why: 'Ownership resolved live from the directory means a leaver can never silently remain a named contact on active guidance.', best: 'Keep statuses current; the orphan intercept downstream is only as honest as this directory.', source: 'WeCollate governance design, dynamic points of contact.' },
   'smpc.multiChange': { what: 'One SmPC update from a manufacturer usually changes several sections at once; flick through each changed section here.', why: 'Showing only the headline change would hide the rest of the update; every changed section deserves the same WAS/NOW scrutiny.', best: 'Step through every change before marking the update reviewed, or open every update in full from the button above.', source: 'MHRA and EMC labelling update practice.' },
   'smpc.fullView': { what: 'Every matching update with all of its changed sections stacked in one continuous view.', why: 'Flicking through cards suits triage; a full stacked view suits a proper review sitting.', best: 'Use your search and filters first, then open the full view to review exactly the set that matters.', source: 'WeCollate design direction, calm interface principle.' },
@@ -4794,8 +4797,13 @@ function documentSections(p, d){
   secs.push({ id: 'toxicities', title: 'Main toxicities', key: true, help: 'document.toxicities', summary: n(d.toxicities.length, 'toxicity', 'toxicities'), inner: `
     <ul class="eligibility-list">${d.toxicities.map(t => `<li>${t.name}: ${t.detail} <button type="button" class="ref-link" data-action="toggle-ref" data-ref="${t.refId}">[${t.refId}]</button></li>`).join('')}</ul>
     ${d.references.filter(r => state[`refOpen_${r.id}`]).map(renderEvidenceInline).join('')}` });
+  /* eslint-disable-next-line no-unused-vars */
   secs.push({ id: 'evidence', title: 'Evidence', key: false, help: 'document.shield', summary: n(d.references.length, 'reference', 'references'), inner: d.references.map(renderEvidenceInline).join('') });
   secs.push({ id: 'source', title: 'Source', key: false, summary: p.reference + ' ' + p.version, inner: `<p class="text-small text-secondary">Clatterbridge Cancer Centre published protocol library, reference ${p.reference}, ${p.version}, ${p.issued}. Reproduced for this prototype; not re-typeset or altered beyond condensing for on-screen display.</p>` });
+  /* Proposals from the Evidence library sit BELOW the approved Evidence section
+     and never inside it. Approved and pending must not look alike (17/07/2026). */
+  const att = evAttachedSection(p.id);
+  if (att) secs.push(att);
   return secs;
 }
 
@@ -4825,7 +4833,54 @@ function corpusSections(p){
   secs.push({ id: 'interactions', title: 'Drug interactions', key: true, help: 'document.interactions', summary: listSummary(p.interactions, 'interaction', 'interactions'), inner: listOrEmpty(p.interactions, missingNote) });
   secs.push({ id: 'precautions', title: 'Special precautions', key: false, help: 'document.precautions', summary: listSummary(p.precautions, 'precaution', 'precautions'), inner: listOrEmpty(p.precautions, missingNote) });
   secs.push({ id: 'source', title: 'Source', key: false, summary: p.reference, inner: `<p class="text-small text-secondary">Clatterbridge Cancer Centre published protocol library, reference ${p.reference}, ${p.version}.${p.sourceFile ? ' Source file: ' + p.sourceFile : ''}</p>` });
+  const att = evAttachedSection(p.id);
+  if (att) secs.push(att);
   return secs;
+}
+
+/* ------------------------------------------------------------------
+   Evidence proposed against this protocol from the Evidence library
+   (17/07/2026). Returns null where nothing is attached, so the section
+   does not appear on documents that have none: an empty section is
+   noise, and this stack is meant to be calm.
+
+   It is deliberately a SEPARATE section from the approved 'Evidence'
+   one on the two worked examples. Approved references and pending
+   proposals must never sit in one list looking alike. A reader glancing
+   at the document has to be able to tell, without clicking, which
+   citations a checker has accepted and which are one person's
+   suggestion from this morning.
+   ------------------------------------------------------------------ */
+function evAttachedSection(protocolId){
+  const items = evAttachments(protocolId);
+  if (!items.length) return null;
+  return {
+    id: 'proposedEvidence',
+    title: 'Evidence proposed, pending a checker',
+    key: false,
+    help: 'evidence.attach',
+    /* Count its own plural. n() is a LOCAL helper redeclared inside each
+       section builder, not a global, so calling it from here threw
+       "n is not defined" and crashed every document that had an attachment.
+       Caught 17/07/2026 by running the app rather than reading it. */
+    summary: items.length + (items.length === 1 ? ' proposal' : ' proposals'),
+    inner: `
+      <p class="text-caption text-muted">Proposed from the Evidence library. NOT part of the approved document: a checker accepts or declines each one. Session only in this prototype.</p>
+      ${items.map(a => { const e = evEntry(a.evId); if (!e) return ''; return `
+      <div class="attention-item mt-2" style="flex-wrap:wrap">
+        <div style="flex:1 1 320px">
+          <div class="text-small" style="font-weight:500">${e.title}</div>
+          <div class="text-caption text-muted">${e.source}</div>
+          <div class="text-caption mt-1"><strong>Why:</strong> ${String(a.why).replace(/</g,'&lt;')}</div>
+          <div class="text-caption text-muted">Proposed by ${a.proposedBy} on ${a.proposedAt}. Pending a checker.</div>
+        </div>
+        <div class="row" style="gap:6px;align-items:center">
+          <span class="chip-tier ${e.tier===1?'tier-1':''}">Tier ${e.tier}</span>
+          <span class="pill pill-warning">Pending</span>
+          <button type="button" class="btn btn-small" data-action="ev-detach" data-pid="${protocolId}" data-ev="${a.evId}">Withdraw</button>
+        </div>
+      </div>`; }).join('')}`
+  };
 }
 
 /* ---------- Corpus document body: the real extracted data for every one of the 553 published protocols ---------- */
@@ -6449,13 +6504,87 @@ function renderAuthoring(){
 }
 
 const EVIDENCE_ENTRIES = [
-  { title: 'NICE TA557: pembrolizumab for adjuvant treatment of resected NSCLC (illustrative citation shape)', source: 'NICE guidance', tier: 1, note: 'Technology appraisal underpinning the adjuvant pembrolizumab baseline.' },
-  { title: 'Pembrolizumab SmPC, section 4.6: fertility, pregnancy and lactation', source: 'EMC, SmPC', tier: 1, note: 'The passage the worked example change anchors to.' },
-  { title: 'BNF: pembrolizumab, interactions and cautions', source: 'BNF', tier: 1, note: 'Dosing and interaction checking for the drug lines.' },
-  { title: 'Asciminib SmPC, section 4.2: posology after two prior TKIs', source: 'EMC, SmPC', tier: 1, note: 'Backs the CML worked example dose.' },
-  { title: 'Peer-reviewed: adjuvant immunotherapy outcomes in resected NSCLC (journal citation, link only)', source: 'PubMed', tier: 2, note: 'Cited and linked, never reproduced: paywalled content stays at its source.' },
-  { title: 'WMCA Bevacizumab rapid infusion guidance, mg/kg tier table', source: 'Cancer alliance guidance', tier: 2, note: 'Regional agreement held in this trunk.' }
+  /* Each entry carries an id (17/07/2026) so it can be attached to a protocol.
+     Before that, the search found entries and there was nothing to do with
+     them: the results were plain divs with no button, while the page's own
+     footer promised "a human attaches, pending a checker". The attach step,
+     which is the entire point of an evidence library, had never been built. */
+  { id: 'ev1', title: 'NICE TA557: pembrolizumab for adjuvant treatment of resected NSCLC (illustrative citation shape)', source: 'NICE guidance', tier: 1, note: 'Technology appraisal underpinning the adjuvant pembrolizumab baseline.' },
+  { id: 'ev2', title: 'Pembrolizumab SmPC, section 4.6: fertility, pregnancy and lactation', source: 'EMC, SmPC', tier: 1, note: 'The passage the worked example change anchors to.' },
+  { id: 'ev3', title: 'BNF: pembrolizumab, interactions and cautions', source: 'BNF', tier: 1, note: 'Dosing and interaction checking for the drug lines.' },
+  { id: 'ev4', title: 'Asciminib SmPC, section 4.2: posology after two prior TKIs', source: 'EMC, SmPC', tier: 1, note: 'Backs the CML worked example dose.' },
+  { id: 'ev5', title: 'Peer-reviewed: adjuvant immunotherapy outcomes in resected NSCLC (journal citation, link only)', source: 'PubMed', tier: 2, note: 'Cited and linked, never reproduced: paywalled content stays at its source.' },
+  { id: 'ev6', title: 'WMCA Bevacizumab rapid infusion guidance, mg/kg tier table', source: 'Cancer alliance guidance', tier: 2, note: 'Regional agreement held in this trunk.' }
 ];
+
+/* ------------------------------------------------------------------
+   ATTACHING EVIDENCE (17/07/2026)
+
+   The page always said "Discovery proposes; a human always disposes,
+   pending a checker." That sentence describes three steps. Only the
+   first existed.
+
+   These helpers add the other two. An attachment is a PROPOSAL: it
+   lands against the protocol marked as proposed by a named person, on
+   a date, and it is not part of the approved document until a checker
+   accepts it. Nothing here bypasses the approval path.
+
+   Session only, like everything else in this prototype.
+   ------------------------------------------------------------------ */
+function evAttachments(protocolId){
+  state.evAttached = state.evAttached || {};
+  return state.evAttached[protocolId] || [];
+}
+function evIsAttached(protocolId, evId){
+  return evAttachments(protocolId).some(a => a.evId === evId);
+}
+/* Every protocol the clinician can actually attach to. Drafts and approved
+   documents both qualify: attaching evidence to a draft is the normal case. */
+function evAttachTargets(){
+  return allProtocols().filter(p => p.status !== 'archived');
+}
+function evEntry(id){ return EVIDENCE_ENTRIES.find(e => e.id === id); }
+/* One row renderer for BOTH the search hits and the browse list. They used to
+   be two near-identical inline templates, which is how the browse list ended up
+   without the note field and both ended up without a button. One renderer, one
+   behaviour. */
+function evRow(e){
+  const open = state.evAttachOpen === e.id;
+  const targets = evAttachTargets();
+  const attachedTo = Object.keys(state.evAttached || {}).filter(pid => evIsAttached(pid, e.id));
+  return `
+  <div class="attention-item" style="flex-wrap:wrap">
+    <div style="flex:1 1 320px">
+      <div class="text-small" style="font-weight:500">${e.title}</div>
+      <div class="text-caption text-muted">${e.source} · ${e.note}</div>
+      ${attachedTo.length ? `<div class="text-caption mt-1" style="color:var(--text-success)">Proposed against ${attachedTo.map(pid => { const p = allProtocols().find(x => x.id === pid); return p ? p.title : pid; }).join(', ')}. Pending a checker.</div>` : ''}
+    </div>
+    <div class="row" style="gap:6px;align-items:center">
+      <span class="chip-tier ${e.tier===1?'tier-1':''}">Tier ${e.tier}</span>
+      <button type="button" class="btn btn-small ${open ? '' : 'btn-primary'}" data-action="ev-attach-open" data-ev="${e.id}">${open ? 'Cancel' : 'Attach to a protocol'} ${helpBtn('evidence.attach')}</button>
+    </div>
+    ${open ? `
+    <div class="card mt-2" style="flex:1 1 100%;background:var(--surface-1)">
+      <div class="text-small" style="font-weight:600">Attach this evidence to which protocol?</div>
+      <p class="text-caption text-muted mt-1">It lands as a PROPOSAL against that protocol, named and dated, and it is not part of the approved document until a checker accepts it. Discovery proposes; you dispose; a checker decides.</p>
+      <div class="field mt-2">
+        <select data-bind="evAttachTarget" aria-label="Choose a protocol">
+          <option value="">Choose a protocol…</option>
+          ${targets.map(p => `<option value="${p.id}" ${state.evAttachTarget === p.id ? 'selected' : ''}>${p.title}${p.status === 'draft' ? ' (your draft)' : ''}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field mt-2">
+        <label class="field-label">Why does this evidence belong here? ${helpBtn('evidence.why')}</label>
+        <input type="text" data-bind="evAttachWhy" value="${(state.evAttachWhy || '').replace(/"/g,'&quot;')}" placeholder="For example: supports the monitoring line">
+      </div>
+      <div class="row mt-2" style="gap:6px">
+        <button type="button" class="btn btn-primary" data-action="ev-attach-do" data-ev="${e.id}" ${(state.evAttachTarget && (state.evAttachWhy||'').trim()) ? '' : 'disabled'}>Propose this attachment</button>
+        <button type="button" class="btn" data-action="ev-attach-cancel">Cancel</button>
+      </div>
+      ${(state.evAttachTarget && !(state.evAttachWhy||'').trim()) ? '<p class="text-caption text-muted mt-2">A reason is required. Evidence attached without a reason cannot be reviewed by a checker, only accepted on trust.</p>' : ''}
+    </div>` : ''}
+  </div>`;
+}
 function renderEvidence(){
   const q = (state.evidenceQ || '').trim().toLowerCase();
   const sources = [
@@ -6492,9 +6621,9 @@ function renderEvidence(){
         <input type="text" data-bind="evidenceQ" value="${(state.evidenceQ||'').replace(/"/g,'&quot;')}" placeholder="Try: pembrolizumab, SmPC, NICE">
       </div>
       ${q && !anySelected ? '<p class="text-small" style="color:var(--text-warning)">Select at least one source above: nothing is searched until you choose where to look. This is deliberate, so a search is always a bounded, named-source search.</p>' : ''}
-      ${(q && anySelected) ? (hits.length ? hits.map(e => `
-        <div class="attention-item"><div><div class="text-small" style="font-weight:500">${e.title}</div><div class="text-caption text-muted">${e.source} · ${e.note}</div></div><span class="chip-tier ${e.tier===1?'tier-1':''}">Tier ${e.tier}</span></div>`).join('')
-        : '<p class="text-small text-secondary">Nothing held against that term. The collaboration layer would let you ask a peer trust, or run a bounded external check against your agreed source set.</p>') : `<div class="text-caption text-muted">Browse the evidence held, or select a source and search above. Entries are illustrative citations: attributed, tiered and licence-aware.</div>${(function(){ const bySrc = {}; EVIDENCE_ENTRIES.forEach(e => { (bySrc[e.source] = bySrc[e.source] || []).push(e); }); return Object.keys(bySrc).map(src => `<div class="text-caption text-muted" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin:12px 0 4px">${src} (${bySrc[src].length})</div>` + bySrc[src].slice(0, 4).map(e => `<div class="attention-item"><div><div class="text-small" style="font-weight:500">${e.title}</div><div class="text-caption text-muted">${e.note}</div></div><span class="chip-tier ${e.tier===1?'tier-1':''}">Tier ${e.tier}</span></div>`).join('')).join(''); })()}`}
+      ${state.evAttachNotice ? `<div class="card" style="background:var(--bg-success)"><p class="text-small" style="color:var(--text-success)">${state.evAttachNotice}</p></div>` : ''}
+      ${(q && anySelected) ? (hits.length ? hits.map(evRow).join('')
+        : '<p class="text-small text-secondary">Nothing held against that term. The collaboration layer would let you ask a peer trust, or run a bounded external check against your agreed source set.</p>') : `<div class="text-caption text-muted">Browse the evidence held, or select a source and search above. Entries are illustrative citations: attributed, tiered and licence-aware.</div>${(function(){ const bySrc = {}; EVIDENCE_ENTRIES.forEach(e => { (bySrc[e.source] = bySrc[e.source] || []).push(e); }); return Object.keys(bySrc).map(src => `<div class="text-caption text-muted" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin:12px 0 4px">${src} (${bySrc[src].length})</div>` + bySrc[src].map(evRow).join('')).join(''); })()}`}
     </div>
     <p class="text-caption text-muted">Discovery proposes; a human attaches, pending a checker. Licence guardrail: paywalled journal content is cited and linked, never reproduced.</p>
   </div>`;
@@ -11871,6 +12000,51 @@ function initEvents(){
     }
     else if (action === 'comms-expand') { const i = +btn.getAttribute('data-idx'); state.commsOpen = state.commsOpen === i ? null : i; renderAll(); }
     else if (action === 'evidence-src-toggle') { if (!state.evidenceSrcSel) state.evidenceSrcSel = {}; const s = btn.getAttribute('data-src'); state.evidenceSrcSel[s] = !state.evidenceSrcSel[s]; renderAll(); }
+    /* ---- Attaching evidence to a protocol (17/07/2026) ---- */
+    else if (action === 'ev-attach-open') {
+      const id = btn.getAttribute('data-ev');
+      /* Toggle: pressing it again closes the panel. Opening a different entry
+         closes the first, so only one attach panel is ever open. */
+      state.evAttachOpen = (state.evAttachOpen === id) ? null : id;
+      state.evAttachTarget = ''; state.evAttachWhy = ''; state.evAttachNotice = null;
+      renderAll();
+    }
+    else if (action === 'ev-attach-cancel') { state.evAttachOpen = null; state.evAttachTarget = ''; state.evAttachWhy = ''; renderAll(); }
+    else if (action === 'ev-attach-do') {
+      const evId = btn.getAttribute('data-ev');
+      const pid = state.evAttachTarget;
+      const why = (state.evAttachWhy || '').trim();
+      const e = evEntry(evId);
+      const p = allProtocols().find(x => x.id === pid);
+      /* Fail closed: no entry, no protocol, or no reason means no attachment.
+         The button is disabled without these, but a disabled button is a
+         courtesy, never a control. */
+      if (!e || !p || !why) return;
+      if (evIsAttached(pid, evId)) {
+        state.evAttachNotice = 'That evidence is already proposed against <strong>' + p.title + '</strong>. Proposing it twice would put the same citation in front of a checker twice.';
+        state.evAttachOpen = null; renderAll(); return;
+      }
+      state.evAttached = state.evAttached || {};
+      state.evAttached[pid] = (state.evAttached[pid] || []).concat([{
+        evId: evId,
+        why: why,
+        proposedBy: demoUser.name,
+        proposedAt: new Date().toLocaleDateString('en-GB'),
+        status: 'proposed'
+      }]);
+      state.evAttachNotice = 'Proposed <strong>' + e.title + '</strong> against <strong>' + p.title + '</strong>. It is recorded as proposed by ' + demoUser.name + ' today, with your reason, and it sits in that protocol\'s Evidence section marked <strong>pending a checker</strong>. It is not part of the approved document until a checker accepts it.';
+      state.evAttachOpen = null; state.evAttachTarget = ''; state.evAttachWhy = '';
+      renderAll();
+    }
+    else if (action === 'ev-detach') {
+      /* Withdrawing your own proposal before a checker sees it. A proposal a
+         checker has already accepted is not withdrawn here: that is a version
+         change and goes through the approval path. */
+      const pid = btn.getAttribute('data-pid'), evId = btn.getAttribute('data-ev');
+      state.evAttached = state.evAttached || {};
+      state.evAttached[pid] = (state.evAttached[pid] || []).filter(a => a.evId !== evId);
+      renderAll();
+    }
     else if (action === 'matrix-cycle') {
       const pk = btn.getAttribute('data-p'), rk = btn.getAttribute('data-r');
       const order = ['released','beta','noaccess'];
@@ -12590,6 +12764,11 @@ function initEvents(){
     else if (bind === 'polEditAuthPub') { const ed = state.policyEdit; if (ed && ed.authority) ed.authority.published = el.value; }
     else if (bind === 'polEditAuthRev') { const ed = state.policyEdit; if (ed && ed.authority) ed.authority.review = el.value; }
     else if (bind === 'polEditPoc') { if (state.policyEdit) state.policyEdit.pocId = el.value || ''; }
+    /* Attach-evidence panel (17/07/2026). Both re-render so the Propose button
+       enables the moment a target and a reason both exist; focus is restored
+       because renderAll() rebuilds the input underneath the cursor. */
+    else if (bind === 'evAttachTarget') { state.evAttachTarget = el.value || ''; renderAll(); }
+    else if (bind === 'evAttachWhy') { state.evAttachWhy = el.value; renderAll(); focusEl('input[data-bind="evAttachWhy"]'); }
     else if (bind === 'authLine') { const p = findProtocol(state.activeId); if (p) { state.authoringDraft = state.authoringDraft || {}; if (!state.authoringDraft[p.id]) state.authoringDraft[p.id] = { lines: [] }; state.authoringDraft[p.id].lines[+el.getAttribute('data-idx')] = el.value; } }
     else if (bind === 'secLine') { const sid = el.getAttribute('data-sec'); state.sectionDrafts = state.sectionDrafts || {}; if (state.sectionDrafts[sid]) { state.sectionDrafts[sid].lines[+el.getAttribute('data-idx')] = el.value; } }
     else if (bind === 'queueRagNote') { const id = el.getAttribute('data-id'); const sec = el.getAttribute('data-sec'); const x = queueItems().find(i => i.id === id); if (x) { x.sectionRag = x.sectionRag || {}; (x.sectionRag[sec] = x.sectionRag[sec] || {}).note = el.value; } }
